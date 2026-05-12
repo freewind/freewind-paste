@@ -3,17 +3,24 @@ import Foundation
 final class ClipboardCaptureService {
   private let watcher: PasteboardWatcher
   private let parser: ClipboardParseService
+  private let copyCommandMonitor: CopyCommandMonitor
 
   init(
     watcher: PasteboardWatcher = PasteboardWatcher(),
-    parser: ClipboardParseService
+    parser: ClipboardParseService,
+    copyCommandMonitor: CopyCommandMonitor = CopyCommandMonitor()
   ) {
     self.watcher = watcher
     self.parser = parser
+    self.copyCommandMonitor = copyCommandMonitor
   }
 
   func start(onCapture: @escaping (ClipItem) -> Void) {
+    copyCommandMonitor.start()
     watcher.start {
+      guard self.copyCommandMonitor.shouldAcceptChange() else {
+        return
+      }
       guard let item = self.parser.parse() else {
         return
       }
@@ -22,6 +29,7 @@ final class ClipboardCaptureService {
   }
 
   func stop() {
+    copyCommandMonitor.stop()
     watcher.stop()
   }
 }

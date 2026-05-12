@@ -2,49 +2,52 @@ import AppKit
 import SwiftUI
 
 @MainActor
-final class PopupWindowController {
-  private var panel: NSPanel?
+final class PopupWindowController: NSObject, NSWindowDelegate {
+  private var window: NSWindow?
 
-  func toggle(with appState: AppState) {
-    if panel == nil {
-      panel = makePanel(appState: appState)
+  func show(with appState: AppState) {
+    if window == nil {
+      window = makeWindow(appState: appState)
     }
 
-    guard let panel else {
+    guard let window else {
       return
     }
 
-    if panel.isVisible {
-      panel.orderOut(nil)
-      appState.isPopupVisible = false
-    } else {
-      panel.center()
-      panel.makeKeyAndOrderFront(nil)
-      NSApp.activate(ignoringOtherApps: true)
-      appState.isPopupVisible = true
+    if !window.isVisible {
+      window.center()
     }
+
+    NSApp.activate(ignoringOtherApps: true)
+    window.makeKeyAndOrderFront(nil)
+    appState.isPopupVisible = true
   }
 
-  private func makePanel(appState: AppState) -> NSPanel {
+  private func makeWindow(appState: AppState) -> NSWindow {
     let root = HistoryView()
       .environmentObject(appState)
       .environmentObject(appState.store)
 
     let hostingView = NSHostingView(rootView: root)
-    let panel = NSPanel(
+    let window = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: 980, height: 620),
-      styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+      styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
       backing: .buffered,
       defer: false
     )
-    panel.titleVisibility = .hidden
-    panel.titlebarAppearsTransparent = true
-    panel.isFloatingPanel = true
-    panel.level = .floating
-    panel.isMovableByWindowBackground = true
-    panel.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-    panel.isReleasedWhenClosed = false
-    panel.contentView = hostingView
-    return panel
+    window.title = "PasteBar"
+    window.titleVisibility = .hidden
+    window.titlebarAppearsTransparent = true
+    window.isReleasedWhenClosed = false
+    window.delegate = self
+    window.contentView = hostingView
+    return window
+  }
+
+  func windowWillClose(_ notification: Notification) {
+    guard let window else {
+      return
+    }
+    window.orderOut(nil)
   }
 }

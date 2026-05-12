@@ -11,10 +11,17 @@ struct HistoryListView: View {
           ForEach(group.items) { item in
             HistoryRowView(item: item)
               .tag(item.id)
+              .contentShape(Rectangle())
+              .onTapGesture {
+                store.focus(item.id)
+              }
               .contextMenu {
                 Button(item.favorite ? "Unfavorite" : "Favorite") {
                   store.toggleFavorite(for: item.id)
                   appState.persistItems()
+                }
+                Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
+                  appState.promptForLabel(for: item.id)
                 }
                 Button("Delete") {
                   store.delete(item.id)
@@ -34,6 +41,8 @@ struct HistoryListView: View {
       }
     }
     .listStyle(.sidebar)
+    .controlSize(.small)
+    .environment(\.defaultMinListRowHeight, 34)
     .onChange(of: store.selectedIDs) { _, newValue in
       if let id = newValue.first {
         store.focus(id)

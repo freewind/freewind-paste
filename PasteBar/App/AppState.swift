@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 
@@ -21,13 +22,15 @@ final class AppState: ObservableObject {
   let hotkeyService: HotkeyService
   let launchAtLoginService: LaunchAtLoginService
   let popupController: PopupWindowController
+  let menuBarController: MenuBarController
   private var isBootstrapped = false
 
   init(
     persistence: ClipPersistence = AppPaths.persistence,
     hotkeyService: HotkeyService = HotkeyService(),
     launchAtLoginService: LaunchAtLoginService = LaunchAtLoginService(),
-    popupController: PopupWindowController = PopupWindowController()
+    popupController: PopupWindowController = PopupWindowController(),
+    menuBarController: MenuBarController = MenuBarController()
   ) {
     self.persistence = persistence
     imageAssetStore = ImageAssetStore(assetsDirectoryURL: AppPaths.assetsDirectoryURL)
@@ -37,6 +40,7 @@ final class AppState: ObservableObject {
     self.hotkeyService = hotkeyService
     self.launchAtLoginService = launchAtLoginService
     self.popupController = popupController
+    self.menuBarController = menuBarController
     let loadedSettings = persistence.loadSettings()
     settings = loadedSettings
     store = ClipStore(
@@ -45,10 +49,10 @@ final class AppState: ObservableObject {
     )
     statusMessage = "Ready"
     isPopupVisible = false
+  }
 
-    Task { @MainActor [weak self] in
-      self?.bootstrap()
-    }
+  func bootstrapIfNeeded() {
+    bootstrap()
   }
 
   func bootstrap() {
@@ -57,9 +61,25 @@ final class AppState: ObservableObject {
     }
     isBootstrapped = true
 
+    menuBarController.install(
+      onOpen: { [weak self] in
+        Task { @MainActor [weak self] in
+          self?.showPopup()
+        }
+      },
+      onSettings: { [weak self] in
+        Task { @MainActor [weak self] in
+          self?.openSettings()
+        }
+      },
+      onQuit: {
+        NSApplication.shared.terminate(nil)
+      }
+    )
+
     hotkeyService.register(settings.hotkey) { [weak self] in
       Task { @MainActor [weak self] in
-        self?.togglePopup()
+        self?.showPopup()
       }
     }
 
@@ -74,10 +94,34 @@ final class AppState: ObservableObject {
         self?.persistItems()
       }
     }
+
+    showPopup()
   }
 
-  func togglePopup() {
-    popupController.toggle(with: self)
+  func showPopup() {
+    popupController.show(with: self)
+  }
+
+  func openSettings() {
+    NSApp.activate(ignoringOtherApps: true)
+    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+  }
+
+  func promptForLabel(for id: String) {
+    let alert = NSAlert()
+    alert.messageText = "Label"
+    alert.informativeText = "Set a short label for this item."
+    alert.addButton(withTitle: "Save")
+    alert.addButton(withTitle: "Cancel")
+
+    let field = NSTextField(string: store.items.first(where: { $0.id == id })?.label ?? "")
+    field.frame = NSRect(x: 0, y: 0, width: 280, height: 24)
+    alert.accessoryView = field
+
+    if alert.runModal() == .alertFirstButtonReturn {
+      store.updateLabel(for: id, label: field.stringValue)
+      persistItems()
+    }
   }
 
   func pasteSelection(mode: PasteMode) {
@@ -95,7 +139,7 @@ final class AppState: ObservableObject {
 
     hotkeyService.register(settings.hotkey) { [weak self] in
       Task { @MainActor [weak self] in
-        self?.togglePopup()
+        self?.showPopup()
       }
     }
 

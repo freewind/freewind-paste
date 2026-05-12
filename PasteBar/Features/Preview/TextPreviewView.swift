@@ -10,13 +10,17 @@ struct TextPreviewView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack {
+        if !item.label.isEmpty {
+          Text(item.label)
+            .font(.headline)
+            .lineLimit(1)
+        }
+
+        Spacer()
+
         Text(item.meta.languageGuess ?? "plain text")
           .font(.caption)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 4)
-          .background(Color.secondary.opacity(0.12))
-          .clipShape(Capsule())
-        Spacer()
+          .foregroundStyle(.secondary)
       }
 
       SyntaxHighlightingTextView(
@@ -25,7 +29,8 @@ struct TextPreviewView: View {
         isEditable: true
       )
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .clipShape(RoundedRectangle(cornerRadius: 10))
+      .background(Color(NSColor.textBackgroundColor))
+      .clipShape(RoundedRectangle(cornerRadius: 8))
       .onAppear {
         draftText = item.content.text ?? ""
       }
