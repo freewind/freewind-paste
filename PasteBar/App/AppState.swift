@@ -397,15 +397,24 @@ final class AppState: ObservableObject {
   }
 
   private func shouldBypassPopupShortcut(_ action: PopupShortcutAction) -> Bool {
-    guard action == .paste || action == .nativePaste else {
-      return false
-    }
-
     guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
       return false
     }
 
-    return !responder.isFieldEditor
+    if action == .paste || action == .nativePaste {
+      return !responder.isFieldEditor
+    }
+
+    guard responder.isFieldEditor else {
+      return false
+    }
+
+    switch action {
+    case .focusPrevious, .focusNext, .expandPrevious, .expandNext, .moveSelectionUp, .moveSelectionDown:
+      return true
+    default:
+      return false
+    }
   }
 
   private func capturePasteTargetApp() {
