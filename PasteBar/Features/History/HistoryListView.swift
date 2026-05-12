@@ -23,11 +23,13 @@ struct HistoryListView: View {
               .contentShape(Rectangle())
               .listRowBackground(Color.clear)
               .highPriorityGesture(TapGesture(count: 2).onEnded {
-                uiState.handleClick(
-                  on: item.id,
-                  orderedIDs: uiState.visibleItems.map(\.id),
-                  modifiers: []
-                )
+                if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+                  uiState.handleClick(
+                    on: item.id,
+                    orderedIDs: uiState.visibleItems.map(\.id),
+                    modifiers: []
+                  )
+                }
                 appState.pasteSelection(mode: .normalEnter)
               })
               .simultaneousGesture(TapGesture().onEnded {
