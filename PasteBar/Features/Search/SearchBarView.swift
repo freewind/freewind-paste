@@ -14,7 +14,7 @@ struct SearchBarView: View {
       moveFocusExtendingSelection: uiState.moveFocusExtendingSelection,
       moveSelectionBlock: appState.moveSelectionShortcut
     )
-    .frame(height: 38)
+    .frame(height: 42)
     .onChange(of: uiState.searchQuery) { _, _ in
       uiState.selectFirstVisible()
     }
@@ -42,7 +42,7 @@ private struct PopupAwareSearchField: NSViewRepresentable {
     let field = PopupAwareNSSearchField()
     field.delegate = context.coordinator
     field.handlePopupKeyDown = handlePopupKeyDown
-    field.font = .systemFont(ofSize: 18)
+    field.font = .systemFont(ofSize: 20)
     field.controlSize = .large
     field.focusRingType = .default
     field.sendsSearchStringImmediately = true
