@@ -61,14 +61,20 @@ struct ImagePreviewView: View {
 
         GeometryReader { proxy in
           let fittedSize = fittedImageSize(for: image.size, in: proxy.size)
+          let shouldShrink = fittedSize.width + 0.5 < image.size.width || fittedSize.height + 0.5 < image.size.height
 
           ZStack(alignment: .topLeading) {
             Color.black.opacity(0.03)
 
-            Image(nsImage: image)
-              .resizable()
-              .scaledToFit()
-              .frame(width: fittedSize.width, height: fittedSize.height, alignment: .topLeading)
+            if shouldShrink {
+              Image(nsImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(width: fittedSize.width, height: fittedSize.height, alignment: .topLeading)
+            } else {
+              Image(nsImage: image)
+                .frame(width: image.size.width, height: image.size.height, alignment: .topLeading)
+            }
           }
           .clipShape(RoundedRectangle(cornerRadius: 10))
           .contentShape(Rectangle())
