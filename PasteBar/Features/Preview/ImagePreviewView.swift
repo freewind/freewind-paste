@@ -63,17 +63,17 @@ struct ImagePreviewView: View {
           let fittedSize = fittedImageSize(for: image.size, in: proxy.size)
           let shouldShrink = fittedSize.width + 0.5 < image.size.width || fittedSize.height + 0.5 < image.size.height
 
-          ZStack(alignment: .topLeading) {
+          ZStack {
             Color.black.opacity(0.03)
 
             if shouldShrink {
               Image(nsImage: image)
                 .resizable()
                 .scaledToFit()
-                .frame(width: fittedSize.width, height: fittedSize.height, alignment: .topLeading)
+                .frame(width: fittedSize.width, height: fittedSize.height)
             } else {
               Image(nsImage: image)
-                .frame(width: image.size.width, height: image.size.height, alignment: .topLeading)
+                .frame(width: image.size.width, height: image.size.height)
             }
           }
           .clipShape(RoundedRectangle(cornerRadius: 10))
