@@ -8,10 +8,7 @@ struct SearchBarView: View {
   var body: some View {
     PopupAwareSearchField(
       text: $uiState.searchQuery,
-      focusNonce: appState.searchFocusNonce,
-      moveFocus: uiState.moveFocus,
-      moveFocusExtendingSelection: uiState.moveFocusExtendingSelection,
-      moveSelectionBlock: appState.moveSelectionShortcut
+      focusNonce: appState.searchFocusNonce
     )
     .frame(height: 42)
     .onChange(of: uiState.searchQuery) { _, _ in
@@ -23,17 +20,9 @@ struct SearchBarView: View {
 private struct PopupAwareSearchField: NSViewRepresentable {
   @Binding var text: String
   let focusNonce: Int
-  let moveFocus: (Int) -> Void
-  let moveFocusExtendingSelection: (Int) -> Void
-  let moveSelectionBlock: (Int) -> Void
 
   func makeCoordinator() -> Coordinator {
-    Coordinator(
-      text: $text,
-      moveFocus: moveFocus,
-      moveFocusExtendingSelection: moveFocusExtendingSelection,
-      moveSelectionBlock: moveSelectionBlock
-    )
+    Coordinator(text: $text)
   }
 
   func makeNSView(context: Context) -> PopupAwareNSSearchField {
@@ -57,21 +46,10 @@ private struct PopupAwareSearchField: NSViewRepresentable {
 
   final class Coordinator: NSObject, NSSearchFieldDelegate {
     @Binding private var text: String
-    private let moveFocus: (Int) -> Void
-    private let moveFocusExtendingSelection: (Int) -> Void
-    private let moveSelectionBlock: (Int) -> Void
     private var lastFocusNonce: Int?
 
-    init(
-      text: Binding<String>,
-      moveFocus: @escaping (Int) -> Void,
-      moveFocusExtendingSelection: @escaping (Int) -> Void,
-      moveSelectionBlock: @escaping (Int) -> Void
-    ) {
+    init(text: Binding<String>) {
       _text = text
-      self.moveFocus = moveFocus
-      self.moveFocusExtendingSelection = moveFocusExtendingSelection
-      self.moveSelectionBlock = moveSelectionBlock
     }
 
     func controlTextDidChange(_ notification: Notification) {
@@ -91,34 +69,6 @@ private struct PopupAwareSearchField: NSViewRepresentable {
       }
     }
 
-    func control(
-      _ control: NSControl,
-      textView: NSTextView,
-      doCommandBy commandSelector: Selector
-    ) -> Bool {
-      switch commandSelector {
-      case #selector(NSResponder.moveUp(_:)):
-        moveFocus(-1)
-        return true
-      case #selector(NSResponder.moveDown(_:)):
-        moveFocus(1)
-        return true
-      case #selector(NSResponder.moveUpAndModifySelection(_:)):
-        moveFocusExtendingSelection(-1)
-        return true
-      case #selector(NSResponder.moveDownAndModifySelection(_:)):
-        moveFocusExtendingSelection(1)
-        return true
-      case #selector(NSResponder.moveParagraphBackwardAndModifySelection(_:)):
-        moveSelectionBlock(-1)
-        return true
-      case #selector(NSResponder.moveParagraphForwardAndModifySelection(_:)):
-        moveSelectionBlock(1)
-        return true
-      default:
-        return false
-      }
-    }
   }
 }
 
