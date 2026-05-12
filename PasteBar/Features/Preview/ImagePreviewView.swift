@@ -71,16 +71,20 @@ struct ImagePreviewView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: fittedSize.width, height: fittedSize.height)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                  appState.previewImage(item)
+                }
             } else {
               Image(nsImage: image)
                 .frame(width: image.size.width, height: image.size.height)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                  appState.previewImage(item)
+                }
             }
           }
           .clipShape(RoundedRectangle(cornerRadius: 10))
-          .contentShape(Rectangle())
-          .onTapGesture {
-            appState.previewImage(item)
-          }
         }
         .frame(
           maxWidth: .infinity,
