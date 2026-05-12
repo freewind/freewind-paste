@@ -45,7 +45,11 @@ struct HistoryRowView: View {
             .lineLimit(1)
         }
       }
+
+      Spacer(minLength: 0)
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(Rectangle())
     .padding(.horizontal, 8)
     .padding(.vertical, 6)
     .background(rowBackground)
