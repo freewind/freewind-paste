@@ -5,6 +5,7 @@ struct ClipItem: Identifiable, Codable, Equatable, Hashable {
   let kind: ClipKind
   var createdAt: Date
   var updatedAt: Date
+  var trashedAt: Date?
   var favorite: Bool
   var label: String
   var content: ClipContent
@@ -15,6 +16,7 @@ struct ClipItem: Identifiable, Codable, Equatable, Hashable {
     kind: ClipKind,
     createdAt: Date = .now,
     updatedAt: Date = .now,
+    trashedAt: Date? = nil,
     favorite: Bool = false,
     label: String = "",
     content: ClipContent,
@@ -24,10 +26,19 @@ struct ClipItem: Identifiable, Codable, Equatable, Hashable {
     self.kind = kind
     self.createdAt = createdAt
     self.updatedAt = updatedAt
+    self.trashedAt = trashedAt
     self.favorite = favorite
     self.label = label
     self.content = content
     self.meta = meta
+  }
+
+  var isTrashed: Bool {
+    trashedAt != nil
+  }
+
+  var groupingDate: Date {
+    trashedAt ?? updatedAt
   }
 
   var titleText: String {

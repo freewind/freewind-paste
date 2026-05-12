@@ -60,6 +60,9 @@ final class AppState: ObservableObject {
     imageOutputMode = .original
     imageLowResMaxDimension = 512
     accessibilityGranted = AXIsProcessTrusted()
+    if store.pruneExpiredTrash() {
+      persistItems()
+    }
   }
 
   func bootstrapIfNeeded() {
@@ -146,13 +149,18 @@ final class AppState: ObservableObject {
     let items = store.selectedItems.isEmpty
       ? [store.focusedItem].compactMap { $0 }
       : store.selectedItems
+    let activeItems = items.filter { !$0.isTrashed }
+    guard !activeItems.isEmpty else {
+      statusMessage = "Trash items can't paste"
+      return
+    }
     pasteService.paste(
-      items: items,
+      items: activeItems,
       mode: mode,
       imageOutputMode: imageOutputMode,
       imageMaxDimension: imageLowResMaxDimension
     )
-    let usesLowResolution = imageOutputMode == .lowResolution && items.contains { $0.kind == .image }
+    let usesLowResolution = imageOutputMode == .lowResolution && activeItems.contains { $0.kind == .image }
     switch (mode, usesLowResolution) {
     case (.normalEnter, true):
       statusMessage = "Pasted low-res image"
@@ -164,6 +172,31 @@ final class AppState: ObservableObject {
       statusMessage = "Native pasted"
     }
     hidePopup()
+  }
+
+  func deleteSelection(permanently: Bool) {
+    store.delete(store.selectedIDs, permanently: permanently)
+    persistItems()
+    statusMessage = permanently ? "Deleted permanently" : "Moved to trash"
+  }
+
+  func deleteCheckedVisible(permanently: Bool) {
+    let ids = Set(store.checkedVisibleItems.map(\.id))
+    store.delete(ids, permanently: permanently)
+    persistItems()
+    statusMessage = permanently ? "Deleted permanently" : "Moved to trash"
+  }
+
+  func restoreSelection() {
+    store.restoreSelected()
+    persistItems()
+    statusMessage = "Restored"
+  }
+
+  func restore(_ id: String) {
+    store.restore(id)
+    persistItems()
+    statusMessage = "Restored"
   }
 
   func updateSettings(_ mutate: (inout AppSettings) -> Void) {
@@ -243,5 +276,35 @@ final class AppState: ObservableObject {
 
   func refreshAccessibilityStatus() {
     accessibilityGranted = AXIsProcessTrusted()
+  }
+
+  func handlePopupKeyDown(_ event: NSEvent) -> NSEvent? {
+    guard
+      isPopupVisible,
+      event.window === popupController.currentWindow,
+      event.type == .keyDown,
+      event.keyCode == 51
+    else {
+      return event
+    }
+
+    if shouldBypassDeleteShortcut() {
+      return event
+    }
+
+    deleteSelection(permanently: event.modifierFlags.contains(.command) || store.currentTab == .trash)
+    return nil
+  }
+
+  private func shouldBypassDeleteShortcut() -> Bool {
+    guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
+      return false
+    }
+
+    if responder.isFieldEditor {
+      return !store.searchQuery.isEmpty
+    }
+
+    return true
   }
 }

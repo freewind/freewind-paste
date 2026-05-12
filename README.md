@@ -5,6 +5,7 @@ macOS 菜单栏剪贴板历史工具。当前实现重点：
 - 捕获 `text / image / file`
 - `jsonl + assets/images` 持久化
 - 搜索、收藏、label、批量勾选
+- 类型筛选、回收站
 - 右侧预览/编辑
 - 图片原图/低清预览与低清复制
 
@@ -100,6 +101,7 @@ struct ClipItem: Identifiable, Codable, Equatable, Hashable {
   let kind: ClipKind
   var createdAt: Date
   var updatedAt: Date
+  var trashedAt: Date?
   var favorite: Bool
   var label: String
   var content: ClipContent
@@ -113,6 +115,10 @@ struct ClipItem: Identifiable, Codable, Equatable, Hashable {
 - `favorite` → 收藏页入口
 - `label` → 用户自定义名称
 - `updatedAt` → 分组与排序参考
+- `trashedAt`
+  - `nil` → 正常项
+  - 非空 → 回收站项
+  - 超过 7 天自动清理
 - 去重：
   - text → 文本全文
   - image → `imageHash`
@@ -150,6 +156,7 @@ struct AppSettings: Codable, Equatable {
 @Published var focusedID: String?
 @Published var currentTab: MainTab
 @Published var searchQuery: String
+@Published var kindFilter: ClipKindFilter
 @Published var previewLocked: Bool
 var selectionAnchorID: String?
 ```
@@ -164,19 +171,33 @@ var selectionAnchorID: String?
   - 只对当前 `visibleItems` 计算全选/半选/删除
 - `focusedID`
   - 键盘上下移动焦点
+- `currentTab`
+  - `history / favorites / trash`
+- `kindFilter`
+  - `all / text / image / file`
 - `selectionAnchorID`
   - `Shift` 选择锚点
 
 派生数据：
 
 - `visibleItems`
-  - `tab + search` 后的结果集
+  - `tab + type + search` 后的结果集
 - `groupedVisibleItems`
   - `Today / Yesterday / Earlier`
 - `checkedVisibleItems`
   - 当前搜索结果里被勾选的项
 - `visibleCheckedState`
   - `none / partial / all`
+
+删除语义：
+
+- `Backspace`
+  - 历史/收藏页 → 移到回收站
+  - 回收站页 → 永久删除
+- `Command + Backspace`
+  - 直接永久删除
+- 回收站支持 `Restore`
+- 右键删除在历史/收藏页也是进回收站
 
 ### AppState
 

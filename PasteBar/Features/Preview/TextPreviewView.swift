@@ -25,10 +25,12 @@ struct TextPreviewView: View {
 
       SyntaxHighlightingTextView(
         text: $draftText,
+        identity: item.id,
         language: isJSON ? "json" : nil,
         isEditable: true,
         measuredHeight: $editorHeight
       )
+      .id(item.id)
       .frame(maxWidth: .infinity)
       .frame(height: editorHeight)
       .background(Color(NSColor.textBackgroundColor))

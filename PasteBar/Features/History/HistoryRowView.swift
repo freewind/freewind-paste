@@ -78,17 +78,22 @@ struct HistoryRowView: View {
 
   @ViewBuilder
   private var favoriteButton: some View {
-    Button {
-      store.toggleFavorite(for: item.id)
-      appState.persistItems()
-    } label: {
-      Image(systemName: item.favorite ? "star.fill" : "star")
-        .font(.system(size: 11))
-        .foregroundStyle(item.favorite ? .yellow : .secondary)
+    if store.currentTab == .trash {
+      Color.clear
         .frame(width: 12, height: 12)
-        .opacity(item.favorite ? 1 : 0.45)
+    } else {
+      Button {
+        store.toggleFavorite(for: item.id)
+        appState.persistItems()
+      } label: {
+        Image(systemName: item.favorite ? "star.fill" : "star")
+          .font(.system(size: 11))
+          .foregroundStyle(item.favorite ? .yellow : .secondary)
+          .frame(width: 12, height: 12)
+          .opacity(item.favorite ? 1 : 0.45)
+      }
+      .buttonStyle(.plain)
     }
-    .buttonStyle(.plain)
   }
 
   private var title: String {

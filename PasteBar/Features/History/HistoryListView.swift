@@ -28,16 +28,26 @@ struct HistoryListView: View {
                 appState.pasteSelection(mode: .normalEnter)
               }
               .contextMenu {
-                Button(item.favorite ? "Unfavorite" : "Favorite") {
-                  store.toggleFavorite(for: item.id)
-                  appState.persistItems()
-                }
-                Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
-                  appState.promptForLabel(for: item.id)
-                }
-                Button("Delete") {
-                  store.delete(item.id)
-                  appState.persistItems()
+                if store.currentTab != .trash {
+                  Button(item.favorite ? "Unfavorite" : "Favorite") {
+                    store.toggleFavorite(for: item.id)
+                    appState.persistItems()
+                  }
+                  Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
+                    appState.promptForLabel(for: item.id)
+                  }
+                  Button("Move to Trash") {
+                    store.delete(item.id)
+                    appState.persistItems()
+                  }
+                } else {
+                  Button("Restore") {
+                    appState.restore(item.id)
+                  }
+                  Button("Delete Permanently") {
+                    store.delete([item.id], permanently: true)
+                    appState.persistItems()
+                  }
                 }
               }
           }

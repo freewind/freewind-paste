@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SyntaxHighlightingTextView: NSViewRepresentable {
   @Binding var text: String
+  let identity: String
   let language: String?
   let isEditable: Bool
   @Binding var measuredHeight: CGFloat
@@ -11,6 +12,7 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
 
   init(
     text: Binding<String>,
+    identity: String,
     language: String?,
     isEditable: Bool,
     measuredHeight: Binding<CGFloat>,
@@ -18,6 +20,7 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
     maxHeight: CGFloat = 260
   ) {
     _text = text
+    self.identity = identity
     self.language = language
     self.isEditable = isEditable
     _measuredHeight = measuredHeight
@@ -62,10 +65,16 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
   }
 
   private func update(textView: NSTextView, scrollView: NSScrollView, coordinator: Coordinator) {
+    let identityChanged = coordinator.lastIdentity != identity
+    coordinator.lastIdentity = identity
     let selectedRange = textView.selectedRange()
-    if textView.string != text || textView.textStorage?.length == 0 {
+    if identityChanged || textView.string != text || textView.textStorage?.length == 0 {
       textView.textStorage?.setAttributedString(SyntaxTextHighlighter.highlight(text, language: language))
-      if selectedRange.location <= textView.string.count {
+      if identityChanged {
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        scrollView.contentView.scroll(to: .zero)
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+      } else if selectedRange.location <= textView.string.count {
         textView.setSelectedRange(selectedRange)
       }
     }
@@ -97,6 +106,7 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
   final class Coordinator: NSObject, NSTextViewDelegate {
     var parent: SyntaxHighlightingTextView
     var lastHeight: CGFloat = 44
+    var lastIdentity: String?
 
     init(_ parent: SyntaxHighlightingTextView) {
       self.parent = parent

@@ -9,6 +9,7 @@ final class BorderlessPopupWindow: NSWindow {
 @MainActor
 final class PopupWindowController: NSObject, NSWindowDelegate {
   private var window: NSWindow?
+  var currentWindow: NSWindow? { window }
 
   func show(with appState: AppState) {
     if window == nil {

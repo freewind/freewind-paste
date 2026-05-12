@@ -8,6 +8,9 @@ struct SearchBarView: View {
   var body: some View {
     TextField("Search", text: $store.searchQuery)
       .textFieldStyle(.roundedBorder)
+      .font(.system(size: 18))
+      .controlSize(.large)
+      .frame(height: 38)
       .focused($isFocused)
       .onAppear {
         isFocused = true
