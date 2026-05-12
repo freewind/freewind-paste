@@ -130,13 +130,6 @@ private final class PopupAwareNSSearchField: NSSearchField {
   var handlePopupKeyDown: ((NSEvent) -> NSEvent?)?
 
   override func keyDown(with event: NSEvent) {
-    let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
-    let isVerticalArrow = event.keyCode == 125 || event.keyCode == 126
-    if isVerticalArrow && !modifiers.contains(.command) && !modifiers.contains(.control) {
-      super.keyDown(with: event)
-      return
-    }
-
     if handlePopupKeyDown?(event) == nil {
       return
     }
