@@ -4,6 +4,23 @@ import Foundation
 
 @MainActor
 final class ClipStore: ObservableObject {
+  enum VisibleCheckedState {
+    case none
+    case partial
+    case all
+
+    var iconName: String {
+      switch self {
+      case .none:
+        return "square"
+      case .partial:
+        return "minus.square.fill"
+      case .all:
+        return "checkmark.square.fill"
+      }
+    }
+  }
+
   @Published var items: [ClipItem]
   @Published var selectedIDs: Set<String>
   @Published var checkedIDs: Set<String>
@@ -78,6 +95,16 @@ final class ClipStore: ObservableObject {
     !visibleItems.isEmpty && checkedVisibleCount == visibleItems.count
   }
 
+  var visibleCheckedState: VisibleCheckedState {
+    if checkedVisibleCount == 0 {
+      return .none
+    }
+    if allVisibleChecked {
+      return .all
+    }
+    return .partial
+  }
+
   func setItems(_ newItems: [ClipItem]) {
     items = newItems
     if focusedID == nil {
@@ -126,6 +153,23 @@ final class ClipStore: ObservableObject {
     selectedIDs = [first.id]
     focusedID = first.id
     selectionAnchorID = first.id
+  }
+
+  func moveFocus(by offset: Int) {
+    guard !visibleItems.isEmpty else {
+      selectedIDs.removeAll()
+      focusedID = nil
+      return
+    }
+
+    let orderedIDs = visibleItems.map(\.id)
+    let currentID = focusedID ?? orderedIDs.first
+    let currentIndex = currentID.flatMap { orderedIDs.firstIndex(of: $0) } ?? 0
+    let nextIndex = min(max(currentIndex + offset, 0), orderedIDs.count - 1)
+    let nextID = orderedIDs[nextIndex]
+    selectedIDs = [nextID]
+    focusedID = nextID
+    selectionAnchorID = nextID
   }
 
   func handleClick(

@@ -7,9 +7,6 @@ struct FilePreviewView: View {
     VStack(alignment: .leading, spacing: 10) {
       let paths = item.content.filePaths ?? []
 
-      Text(item.meta.fileCount == 1 ? "File Path" : "File Paths")
-        .font(.headline)
-
       ScrollView {
         Text(paths.joined(separator: "\n"))
           .textSelection(.enabled)

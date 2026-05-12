@@ -5,14 +5,33 @@ struct HotkeyRecorderView: View {
   @EnvironmentObject private var appState: AppState
   @State private var isRecording = false
   @State private var monitor: Any?
+  @State private var feedbackText: String = ""
+  @State private var feedbackTask: Task<Void, Never>?
 
   var body: some View {
-    HStack {
-      Text(displayName(for: appState.settings.hotkey))
-        .font(.system(.body, design: .monospaced))
-      Spacer()
-      Button(isRecording ? "Press Keys" : "Record") {
-        toggleRecording()
+    VStack(alignment: .leading, spacing: 10) {
+      HStack {
+        Text(isRecording ? "Listening..." : displayName(for: appState.settings.hotkey))
+          .font(.system(.body, design: .monospaced))
+          .foregroundStyle(isRecording ? .secondary : .primary)
+        Spacer()
+        Button(isRecording ? "Cancel" : "Record") {
+          toggleRecording()
+        }
+      }
+      .padding(.vertical, 10)
+      .padding(.horizontal, 12)
+      .background(isRecording ? Color.accentColor.opacity(0.08) : Color(NSColor.textBackgroundColor))
+      .overlay(
+        RoundedRectangle(cornerRadius: 10)
+          .stroke(isRecording ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: 1)
+      )
+      .clipShape(RoundedRectangle(cornerRadius: 10))
+
+      if !feedbackText.isEmpty {
+        Text(feedbackText)
+          .font(.caption)
+          .foregroundStyle(.secondary)
       }
     }
     .onDisappear {
@@ -27,7 +46,14 @@ struct HotkeyRecorderView: View {
     }
 
     isRecording = true
+    feedbackText = "Press modifiers + key, Esc to cancel."
     monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+      if event.keyCode == 53 {
+        stopRecording()
+        feedbackText = "Recording cancelled."
+        return nil
+      }
+
       let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
       guard !modifiers.isEmpty else {
         return nil
@@ -39,6 +65,7 @@ struct HotkeyRecorderView: View {
           modifiers: carbonFlags(for: modifiers)
         )
       }
+      showFeedback("Saved: \(displayName(for: appState.settings.hotkey))")
       stopRecording()
       return nil
     }
@@ -49,6 +76,20 @@ struct HotkeyRecorderView: View {
     if let monitor {
       NSEvent.removeMonitor(monitor)
       self.monitor = nil
+    }
+  }
+
+  private func showFeedback(_ text: String) {
+    feedbackTask?.cancel()
+    feedbackText = text
+    feedbackTask = Task { @MainActor in
+      try? await Task.sleep(for: .seconds(1.2))
+      guard !Task.isCancelled else {
+        return
+      }
+      if feedbackText == text {
+        feedbackText = ""
+      }
     }
   }
 

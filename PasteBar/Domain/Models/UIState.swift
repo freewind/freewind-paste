@@ -22,13 +22,4 @@ enum ImageOutputMode: String, CaseIterable {
       return "Low"
     }
   }
-
-  var maxDimension: CGFloat? {
-    switch self {
-    case .original:
-      return nil
-    case .lowResolution:
-      return 1024
-    }
-  }
 }

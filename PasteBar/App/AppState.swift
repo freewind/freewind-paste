@@ -16,6 +16,8 @@ final class AppState: ObservableObject {
   @Published var isPopupVisible: Bool
   @Published var searchFocusNonce: Int
   @Published var imageOutputMode: ImageOutputMode
+  @Published var imageLowResMaxDimension: Double
+  @Published var accessibilityGranted: Bool
 
   let persistence: ClipPersistence
   let imageAssetStore: ImageAssetStore
@@ -56,6 +58,8 @@ final class AppState: ObservableObject {
     isPopupVisible = false
     searchFocusNonce = 0
     imageOutputMode = .original
+    imageLowResMaxDimension = 512
+    accessibilityGranted = AXIsProcessTrusted()
   }
 
   func bootstrapIfNeeded() {
@@ -112,6 +116,7 @@ final class AppState: ObservableObject {
   }
 
   func openSettings() {
+    refreshAccessibilityStatus()
     settingsWindowController.show(with: self)
   }
 
@@ -136,7 +141,12 @@ final class AppState: ObservableObject {
     let items = store.selectedItems.isEmpty
       ? [store.focusedItem].compactMap { $0 }
       : store.selectedItems
-    pasteService.paste(items: items, mode: mode, imageOutputMode: imageOutputMode)
+    pasteService.paste(
+      items: items,
+      mode: mode,
+      imageOutputMode: imageOutputMode,
+      imageMaxDimension: imageLowResMaxDimension
+    )
     let usesLowResolution = imageOutputMode == .lowResolution && items.contains { $0.kind == .image }
     switch (mode, usesLowResolution) {
     case (.normalEnter, true):
@@ -181,8 +191,41 @@ final class AppState: ObservableObject {
     statusMessage = "Cleared"
   }
 
+  func copyLowResolutionImage(from item: ClipItem) {
+    guard
+      item.kind == .image,
+      let path = item.content.imageAssetPath,
+      let image = imageAssetStore.load(
+        relativePath: path,
+        mode: .lowResolution,
+        maxDimension: imageLowResMaxDimension
+      ),
+      let saved = try? imageAssetStore.save(image)
+    else {
+      return
+    }
+
+    let trimmedLabel = item.label.trimmingCharacters(in: .whitespacesAndNewlines)
+    let newItem = ClipItem(
+      kind: .image,
+      favorite: item.favorite,
+      label: trimmedLabel.isEmpty ? "" : "\(trimmedLabel) low",
+      content: .image(assetPath: saved.relativePath),
+      meta: ClipMeta(
+        imageWidth: saved.width,
+        imageHeight: saved.height,
+        imageHash: saved.hash,
+        imageByteSize: saved.byteSize
+      )
+    )
+    store.insertOrPromote(newItem)
+    persistItems()
+    statusMessage = "Copied low-res image"
+  }
+
   func requestAccessibilityPermission() {
     _ = pasteService.trigger.requestPermissionIfNeeded()
+    refreshAccessibilityStatus()
   }
 
   func openAccessibilitySettings() {
@@ -192,7 +235,7 @@ final class AppState: ObservableObject {
     NSWorkspace.shared.open(url)
   }
 
-  var accessibilityGranted: Bool {
-    AXIsProcessTrusted()
+  func refreshAccessibilityStatus() {
+    accessibilityGranted = AXIsProcessTrusted()
   }
 }

@@ -21,5 +21,15 @@ struct SearchBarView: View {
       .onSubmit {
         appState.pasteSelection(mode: .normalEnter)
       }
+      .onMoveCommand { direction in
+        switch direction {
+        case .up:
+          store.moveFocus(by: -1)
+        case .down:
+          store.moveFocus(by: 1)
+        default:
+          break
+        }
+      }
   }
 }

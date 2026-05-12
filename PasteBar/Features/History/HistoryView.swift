@@ -6,9 +6,19 @@ struct HistoryView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      SearchBarView()
+      VStack(spacing: 8) {
+        SearchBarView()
+          .padding(.horizontal, 12)
+          .padding(.top, 10)
+
+        Picker("", selection: $store.currentTab) {
+          Text("History").tag(MainTab.history)
+          Text("Favorites").tag(MainTab.favorites)
+        }
+        .pickerStyle(.segmented)
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.bottom, 10)
+      }
 
       Divider()
 
@@ -18,8 +28,8 @@ struct HistoryView: View {
 
           sidebarFooter
         }
-        .padding(.horizontal, 10)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 6)
+        .padding(.bottom, 6)
         .frame(minWidth: 360, idealWidth: 420, maxWidth: 460, maxHeight: .infinity)
       } detail: {
         PreviewPaneView()
@@ -30,63 +40,53 @@ struct HistoryView: View {
   }
 
   private var sidebarFooter: some View {
-    VStack(spacing: 8) {
-      Picker("Tab", selection: $store.currentTab) {
-        Text("History").tag(MainTab.history)
-        Text("Favorites").tag(MainTab.favorites)
-      }
-      .pickerStyle(.segmented)
-
-      HStack(spacing: 8) {
-        Button(store.allVisibleChecked ? "Uncheck All" : "Check All") {
+    HStack(spacing: 8) {
+      Button {
           store.setVisibleChecked(!store.allVisibleChecked)
-        }
-
-        if store.checkedVisibleCount > 0 {
-          Button("Delete Checked") {
-            store.deleteCheckedVisible()
-            appState.persistItems()
-          }
-        }
-
-        Button("Reverse") {
-          store.reverseSelection()
-          appState.persistItems()
-        }
-
-        Button("Delete") {
-          store.deleteSelected()
-          appState.persistItems()
-        }
-
-        Spacer()
-
-        Menu("More") {
-          if store.checkedVisibleCount > 0 {
-            Button("Clear Visible Checks") {
-              store.clearCheckedVisible()
-            }
-          }
-          Button("Settings") {
-            appState.openSettings()
-          }
-          Button("Clear All") {
-            appState.clearAll()
-          }
-        }
+      } label: {
+        Image(systemName: store.visibleCheckedState.iconName)
+          .foregroundStyle(store.checkedVisibleCount > 0 ? Color.accentColor : Color.secondary)
       }
-      .buttonStyle(.borderless)
-      .font(.caption)
 
-      if store.checkedVisibleCount > 0 {
-        HStack {
-          Text("Checked in current result: \(store.checkedVisibleCount)")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-          Spacer()
+      Text("\(store.checkedVisibleCount)")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(minWidth: 18, alignment: .leading)
+
+      Button("Delete Checked") {
+        store.deleteCheckedVisible()
+        appState.persistItems()
+      }
+      .disabled(store.checkedVisibleCount == 0)
+
+      Button("Reverse") {
+        store.reverseSelection()
+        appState.persistItems()
+      }
+
+      Button("Delete") {
+        store.deleteSelected()
+        appState.persistItems()
+      }
+
+      Spacer()
+
+      Menu("More") {
+        if store.checkedVisibleCount > 0 {
+          Button("Clear Visible Checks") {
+            store.clearCheckedVisible()
+          }
+        }
+        Button("Settings") {
+          appState.openSettings()
+        }
+        Button("Clear All") {
+          appState.clearAll()
         }
       }
     }
+    .buttonStyle(.borderless)
+    .font(.caption)
     .padding(.top, 4)
   }
 }

@@ -19,6 +19,14 @@ struct HistoryListView: View {
                   modifiers: NSEvent.modifierFlags
                 )
               }
+              .onTapGesture(count: 2) {
+                store.handleClick(
+                  on: item.id,
+                  orderedIDs: store.visibleItems.map(\.id),
+                  modifiers: []
+                )
+                appState.pasteSelection(mode: .normalEnter)
+              }
               .contextMenu {
                 Button(item.favorite ? "Unfavorite" : "Favorite") {
                   store.toggleFavorite(for: item.id)
@@ -46,7 +54,7 @@ struct HistoryListView: View {
     }
     .listStyle(.sidebar)
     .controlSize(.small)
-    .environment(\.defaultMinListRowHeight, 34)
+    .environment(\.defaultMinListRowHeight, 26)
     .onChange(of: store.selectedIDs) { _, newValue in
       if let id = newValue.first {
         store.focusedID = id

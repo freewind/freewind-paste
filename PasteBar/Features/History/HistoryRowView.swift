@@ -7,15 +7,12 @@ struct HistoryRowView: View {
   @State private var isHovering = false
 
   var body: some View {
-    HStack(spacing: 6) {
+    HStack(spacing: 4) {
       checkButton
 
       favoriteButton
 
-      Image(systemName: iconName)
-        .font(.caption)
-        .frame(width: 12)
-        .foregroundStyle(.secondary)
+      leadingPreview
 
       VStack(alignment: .leading, spacing: 2) {
         Text(title)
@@ -29,18 +26,40 @@ struct HistoryRowView: View {
         }
       }
     }
-    .padding(.vertical, 1)
+    .padding(.vertical, 0)
     .onHover { isHovering = $0 }
   }
 
-  private var iconName: String {
+  @ViewBuilder
+  private var leadingPreview: some View {
     switch item.kind {
-    case .text:
-      return "text.alignleft"
     case .image:
-      return "photo"
+      if
+        let path = item.content.imageAssetPath,
+        let image = appState.imageAssetStore.load(relativePath: path)
+      {
+        Image(nsImage: image)
+          .resizable()
+          .scaledToFill()
+          .frame(width: 22, height: 22)
+          .clipped()
+          .clipShape(RoundedRectangle(cornerRadius: 4))
+      } else {
+        Image(systemName: "photo")
+          .font(.system(size: 10))
+          .frame(width: 22, height: 22)
+          .foregroundStyle(.secondary)
+      }
+    case .text:
+      Image(systemName: "text.alignleft")
+        .font(.system(size: 10))
+        .frame(width: 12, height: 12)
+        .foregroundStyle(.secondary)
     case .file:
-      return "doc"
+      Image(systemName: "doc")
+        .font(.system(size: 10))
+        .frame(width: 12, height: 12)
+        .foregroundStyle(.secondary)
     }
   }
 

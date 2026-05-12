@@ -4,53 +4,47 @@ struct TextPreviewView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var store: ClipStore
   let item: ClipItem
+  var showsHeader: Bool = true
 
   @State private var draftText: String = ""
   @State private var isSyncingFromItem = false
   @State private var saveTask: Task<Void, Never>?
+  @State private var editorHeight: CGFloat = 44
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        if !item.label.isEmpty {
-          Text(item.label)
-            .font(.headline)
-            .lineLimit(1)
+      if showsHeader {
+        HStack {
+          if !item.label.isEmpty {
+            Text(item.label)
+              .font(.headline)
+              .lineLimit(1)
+          }
         }
-
-        Spacer()
-
-        Text(isJSON ? "json" : "plain text")
-          .font(.caption)
-          .foregroundStyle(.secondary)
       }
 
-      if isJSON {
-        SyntaxHighlightingTextView(
-          text: $draftText,
-          language: "json",
-          isEditable: true
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.textBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .onAppear { syncFromItem() }
-        .onChange(of: item.id) { _, _ in syncFromItem() }
-        .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
-        .onDisappear { handleDisappear() }
-      } else {
-        TextEditor(text: $draftText)
-          .font(.system(size: 13, design: .monospaced))
-          .scrollContentBackground(.hidden)
-          .padding(6)
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(Color(NSColor.textBackgroundColor))
-          .clipShape(RoundedRectangle(cornerRadius: 8))
-          .onAppear { syncFromItem() }
-          .onChange(of: item.id) { _, _ in syncFromItem() }
-          .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
-          .onDisappear { handleDisappear() }
+      SyntaxHighlightingTextView(
+        text: $draftText,
+        language: isJSON ? "json" : nil,
+        isEditable: true,
+        measuredHeight: $editorHeight
+      )
+      .frame(maxWidth: .infinity)
+      .frame(height: editorHeight)
+      .background(Color(NSColor.textBackgroundColor))
+      .clipShape(RoundedRectangle(cornerRadius: 8))
+      .onAppear { syncFromItem() }
+      .onChange(of: item.id) { _, _ in syncFromItem() }
+      .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
+      .onDisappear { handleDisappear() }
+
+      HStack(spacing: 6) {
+        Text("\(lineCount) lines")
+        Text("·")
+        Text("\(draftText.count) chars")
       }
+      .font(.caption)
+      .foregroundStyle(.secondary)
     }
   }
 
@@ -98,5 +92,9 @@ struct TextPreviewView: View {
       languageGuess: LanguageGuessService.guess(for: draftText)
     )
     appState.persistItems()
+  }
+
+  private var lineCount: Int {
+    max(draftText.split(separator: "\n", omittingEmptySubsequences: false).count, 1)
   }
 }

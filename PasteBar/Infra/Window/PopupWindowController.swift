@@ -1,6 +1,11 @@
 import AppKit
 import SwiftUI
 
+final class BorderlessPopupWindow: NSWindow {
+  override var canBecomeKey: Bool { true }
+  override var canBecomeMain: Bool { true }
+}
+
 @MainActor
 final class PopupWindowController: NSObject, NSWindowDelegate {
   private var window: NSWindow?
@@ -29,21 +34,18 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
       .environmentObject(appState.store)
 
     let hostingView = NSHostingView(rootView: root)
-    let window = NSWindow(
+    let window = BorderlessPopupWindow(
       contentRect: NSRect(x: 0, y: 0, width: 980, height: 620),
-      styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+      styleMask: [.borderless],
       backing: .buffered,
       defer: false
     )
-    window.title = "PasteBar"
-    window.titleVisibility = .hidden
-    window.titlebarAppearsTransparent = true
+    window.isOpaque = false
+    window.backgroundColor = .windowBackgroundColor
     window.isReleasedWhenClosed = false
     window.delegate = self
+    window.isMovableByWindowBackground = true
     window.contentView = hostingView
-    window.standardWindowButton(.closeButton)?.isHidden = true
-    window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-    window.standardWindowButton(.zoomButton)?.isHidden = true
     return window
   }
 

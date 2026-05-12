@@ -55,7 +55,8 @@ struct ClipboardParseService {
       meta: ClipMeta(
         imageWidth: saved.width,
         imageHeight: saved.height,
-        imageHash: saved.hash
+        imageHash: saved.hash,
+        imageByteSize: saved.byteSize
       )
     )
   }

@@ -39,11 +39,11 @@ struct PreviewPaneView: View {
         ForEach(Array(store.selectedItems.enumerated()), id: \.element.id) { index, item in
           VStack(alignment: .leading, spacing: 10) {
             HStack {
-              Text("\(index + 1). \(item.label.isEmpty ? item.titleText : item.label)")
+              Text(headerTitle(for: item, index: index + 1))
                 .font(.headline)
                 .lineLimit(1)
               Spacer()
-              Text(item.kind.rawValue.capitalized)
+              Text(headerSummary(for: item))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
@@ -84,8 +84,7 @@ struct PreviewPaneView: View {
   private func multiSelectionItemContent(_ item: ClipItem) -> some View {
     switch item.kind {
     case .text:
-      TextPreviewView(item: item)
-        .frame(minHeight: 160)
+      TextPreviewView(item: item, showsHeader: false)
     case .image:
       ImagePreviewView(
         item: item,
@@ -106,12 +105,49 @@ struct PreviewPaneView: View {
 
   private func metaHeader(item: ClipItem) -> some View {
     HStack {
-      Text(item.label.isEmpty ? item.titleText : item.label)
-        .font(.headline)
+      if !item.label.isEmpty {
+        Text(item.label)
+          .font(.headline)
+      }
       Spacer()
-      Text(item.kind.rawValue.capitalized)
+      Text(headerSummary(for: item))
         .font(.caption)
         .foregroundStyle(.secondary)
+    }
+  }
+
+  private func headerTitle(for item: ClipItem, index: Int) -> String {
+    let label = item.label.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !label.isEmpty {
+      return "\(index). \(label)"
+    }
+    switch item.kind {
+    case .text:
+      return "\(index). \(item.normalizedTextPreview)"
+    case .image:
+      let width = item.meta.imageWidth ?? 0
+      let height = item.meta.imageHeight ?? 0
+      return "\(index). \(width)x\(height)"
+    case .file:
+      return "\(index). \(item.meta.fileName ?? "File")"
+    }
+  }
+
+  private func headerSummary(for item: ClipItem) -> String {
+    switch item.kind {
+    case .text:
+      let text = item.content.text ?? ""
+      let lines = max(text.split(separator: "\n", omittingEmptySubsequences: false).count, 1)
+      return "\(text.count) chars · \(lines) lines"
+    case .image:
+      let width = item.meta.imageWidth ?? 0
+      let height = item.meta.imageHeight ?? 0
+      let bytes = ByteCountFormatter.string(fromByteCount: item.meta.imageByteSize ?? 0, countStyle: .file)
+      return "\(width)x\(height) · \(bytes)"
+    case .file:
+      let count = item.meta.fileCount ?? item.content.filePaths?.count ?? 0
+      let size = ByteCountFormatter.string(fromByteCount: item.meta.fileSize ?? 0, countStyle: .file)
+      return "\(count) items · \(size)"
     }
   }
 }

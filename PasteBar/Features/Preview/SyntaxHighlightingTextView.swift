@@ -5,6 +5,25 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
   @Binding var text: String
   let language: String?
   let isEditable: Bool
+  @Binding var measuredHeight: CGFloat
+  let minHeight: CGFloat
+  let maxHeight: CGFloat
+
+  init(
+    text: Binding<String>,
+    language: String?,
+    isEditable: Bool,
+    measuredHeight: Binding<CGFloat>,
+    minHeight: CGFloat = 44,
+    maxHeight: CGFloat = 260
+  ) {
+    _text = text
+    self.language = language
+    self.isEditable = isEditable
+    _measuredHeight = measuredHeight
+    self.minHeight = minHeight
+    self.maxHeight = maxHeight
+  }
 
   func makeCoordinator() -> Coordinator {
     Coordinator(self)
@@ -23,8 +42,14 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
     textView.delegate = context.coordinator
     textView.isEditable = isEditable
     textView.textContainerInset = NSSize(width: 10, height: 12)
+    textView.isHorizontallyResizable = false
+    textView.isVerticallyResizable = true
+    textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+    textView.textContainer?.widthTracksTextView = true
+    textView.textContainer?.heightTracksTextView = false
+    textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
     scrollView.documentView = textView
-    update(textView: textView)
+    update(textView: textView, scrollView: scrollView, coordinator: context.coordinator)
     return scrollView
   }
 
@@ -33,10 +58,10 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
       return
     }
     textView.isEditable = isEditable
-    update(textView: textView)
+    update(textView: textView, scrollView: scrollView, coordinator: context.coordinator)
   }
 
-  private func update(textView: NSTextView) {
+  private func update(textView: NSTextView, scrollView: NSScrollView, coordinator: Coordinator) {
     let selectedRange = textView.selectedRange()
     if textView.string != text || textView.textStorage?.length == 0 {
       textView.textStorage?.setAttributedString(SyntaxTextHighlighter.highlight(text, language: language))
@@ -44,13 +69,38 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
         textView.setSelectedRange(selectedRange)
       }
     }
+    syncHeight(textView: textView, scrollView: scrollView, coordinator: coordinator)
+  }
+
+  private func syncHeight(textView: NSTextView, scrollView: NSScrollView, coordinator: Coordinator) {
+    guard let textContainer = textView.textContainer else {
+      return
+    }
+
+    let width = max(scrollView.contentSize.width, 1)
+    textContainer.containerSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
+    textView.layoutManager?.ensureLayout(for: textContainer)
+
+    let usedHeight = textView.layoutManager?.usedRect(for: textContainer).height ?? 0
+    let contentHeight = ceil(usedHeight + textView.textContainerInset.height * 2)
+    let nextHeight = min(max(contentHeight, minHeight), maxHeight)
+
+    scrollView.hasVerticalScroller = contentHeight > maxHeight
+    if abs(coordinator.lastHeight - nextHeight) > 0.5 {
+      coordinator.lastHeight = nextHeight
+      DispatchQueue.main.async {
+        measuredHeight = nextHeight
+      }
+    }
   }
 
   final class Coordinator: NSObject, NSTextViewDelegate {
     var parent: SyntaxHighlightingTextView
+    var lastHeight: CGFloat = 44
 
     init(_ parent: SyntaxHighlightingTextView) {
       self.parent = parent
+      lastHeight = parent.minHeight
     }
 
     func textDidChange(_ notification: Notification) {
@@ -58,6 +108,9 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
         return
       }
       parent.text = textView.string
+      if let scrollView = textView.enclosingScrollView {
+        parent.syncHeight(textView: textView, scrollView: scrollView, coordinator: self)
+      }
     }
   }
 }

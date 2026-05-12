@@ -7,6 +7,7 @@ struct ClipMeta: Codable, Equatable, Hashable {
   var imageWidth: Int?
   var imageHeight: Int?
   var imageHash: String?
+  var imageByteSize: Int64?
 
   var fileName: String?
   var fileSize: Int64?
@@ -20,6 +21,7 @@ struct ClipMeta: Codable, Equatable, Hashable {
     imageWidth: Int? = nil,
     imageHeight: Int? = nil,
     imageHash: String? = nil,
+    imageByteSize: Int64? = nil,
     fileName: String? = nil,
     fileSize: Int64? = nil,
     fileExists: Bool? = nil,
@@ -31,6 +33,7 @@ struct ClipMeta: Codable, Equatable, Hashable {
     self.imageWidth = imageWidth
     self.imageHeight = imageHeight
     self.imageHash = imageHash
+    self.imageByteSize = imageByteSize
     self.fileName = fileName
     self.fileSize = fileSize
     self.fileExists = fileExists
