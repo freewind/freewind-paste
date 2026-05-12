@@ -120,6 +120,19 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
 final class TransientPreviewPanel: NSPanel {
   override var canBecomeKey: Bool { true }
   override var canBecomeMain: Bool { false }
+
+  override func cancelOperation(_ sender: Any?) {
+    orderOut(sender)
+  }
+
+  override func keyDown(with event: NSEvent) {
+    if event.keyCode == 53 {
+      orderOut(nil)
+      return
+    }
+
+    super.keyDown(with: event)
+  }
 }
 
 @MainActor
