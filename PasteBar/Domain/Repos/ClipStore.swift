@@ -6,6 +6,7 @@ import Foundation
 final class ClipStore: ObservableObject {
   @Published var items: [ClipItem]
   @Published var selectedIDs: Set<String>
+  @Published var checkedIDs: Set<String>
   @Published var focusedID: String?
   @Published var currentTab: MainTab
   @Published var searchQuery: String
@@ -15,6 +16,7 @@ final class ClipStore: ObservableObject {
   init(
     items: [ClipItem] = [],
     selectedIDs: Set<String> = [],
+    checkedIDs: Set<String> = [],
     focusedID: String? = nil,
     currentTab: MainTab = .history,
     searchQuery: String = "",
@@ -22,6 +24,7 @@ final class ClipStore: ObservableObject {
   ) {
     self.items = items
     self.selectedIDs = selectedIDs
+    self.checkedIDs = checkedIDs
     self.focusedID = focusedID
     self.currentTab = currentTab
     self.searchQuery = searchQuery
@@ -61,6 +64,18 @@ final class ClipStore: ObservableObject {
 
   var selectedItems: [ClipItem] {
     items.filter { selectedIDs.contains($0.id) }
+  }
+
+  var checkedVisibleItems: [ClipItem] {
+    visibleItems.filter { checkedIDs.contains($0.id) }
+  }
+
+  var checkedVisibleCount: Int {
+    checkedVisibleItems.count
+  }
+
+  var allVisibleChecked: Bool {
+    !visibleItems.isEmpty && checkedVisibleCount == visibleItems.count
   }
 
   func setItems(_ newItems: [ClipItem]) {
@@ -187,6 +202,40 @@ final class ClipStore: ObservableObject {
     items = result
   }
 
+  func toggleChecked(_ id: String) {
+    if checkedIDs.contains(id) {
+      checkedIDs.remove(id)
+    } else {
+      checkedIDs.insert(id)
+    }
+  }
+
+  func setVisibleChecked(_ checked: Bool) {
+    let ids = Set(visibleItems.map(\.id))
+    if checked {
+      checkedIDs.formUnion(ids)
+    } else {
+      checkedIDs.subtract(ids)
+    }
+  }
+
+  func clearCheckedVisible() {
+    checkedIDs.subtract(visibleItems.map(\.id))
+  }
+
+  func deleteCheckedVisible() {
+    let ids = Set(checkedVisibleItems.map(\.id))
+    guard !ids.isEmpty else {
+      return
+    }
+    items.removeAll { ids.contains($0.id) }
+    checkedIDs.subtract(ids)
+    selectedIDs.subtract(ids)
+    if let focusedID, ids.contains(focusedID) {
+      self.focusedID = visibleItems.first?.id
+    }
+  }
+
   func reverseSelection() {
     let ids = selectedItems.map(\.id)
     guard ids.count > 1 else {
@@ -241,12 +290,14 @@ final class ClipStore: ObservableObject {
 
   func deleteSelected() {
     items.removeAll { selectedIDs.contains($0.id) }
+    checkedIDs.subtract(selectedIDs)
     selectedIDs.removeAll()
     focusedID = visibleItems.first?.id
   }
 
   func delete(_ id: String) {
     items.removeAll { $0.id == id }
+    checkedIDs.remove(id)
     selectedIDs.remove(id)
     if focusedID == id {
       focusedID = visibleItems.first?.id
@@ -256,6 +307,7 @@ final class ClipStore: ObservableObject {
   func clearAll() {
     items.removeAll()
     selectedIDs.removeAll()
+    checkedIDs.removeAll()
     focusedID = nil
   }
 }

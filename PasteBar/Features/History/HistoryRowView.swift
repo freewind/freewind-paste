@@ -8,6 +8,8 @@ struct HistoryRowView: View {
 
   var body: some View {
     HStack(spacing: 6) {
+      checkButton
+
       favoriteButton
 
       Image(systemName: iconName)
@@ -40,6 +42,19 @@ struct HistoryRowView: View {
     case .file:
       return "doc"
     }
+  }
+
+  @ViewBuilder
+  private var checkButton: some View {
+    Button {
+      store.toggleChecked(item.id)
+    } label: {
+      Image(systemName: store.checkedIDs.contains(item.id) ? "checkmark.square.fill" : "square")
+        .font(.system(size: 11))
+        .foregroundStyle(store.checkedIDs.contains(item.id) ? Color.accentColor : Color.secondary)
+        .frame(width: 12, height: 12)
+    }
+    .buttonStyle(.plain)
   }
 
   @ViewBuilder

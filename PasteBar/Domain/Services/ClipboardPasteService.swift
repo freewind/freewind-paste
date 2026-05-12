@@ -5,7 +5,7 @@ import Foundation
 struct ClipboardPasteService {
   let trigger: AccessibilityPasteTrigger
 
-  func paste(items: [ClipItem], mode: PasteMode) {
+  func paste(items: [ClipItem], mode: PasteMode, imageOutputMode: ImageOutputMode) {
     guard !items.isEmpty else {
       return
     }
@@ -15,9 +15,9 @@ struct ClipboardPasteService {
 
     switch mode {
     case .normalEnter:
-      writeNormal(items: items, to: pasteboard)
+      writeNormal(items: items, to: pasteboard, imageOutputMode: imageOutputMode)
     case .nativeShiftEnter:
-      writeNative(items: items, to: pasteboard)
+      writeNative(items: items, to: pasteboard, imageOutputMode: imageOutputMode)
     }
 
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
@@ -25,13 +25,13 @@ struct ClipboardPasteService {
     }
   }
 
-  private func writeNormal(items: [ClipItem], to pasteboard: NSPasteboard) {
+  private func writeNormal(items: [ClipItem], to pasteboard: NSPasteboard, imageOutputMode: ImageOutputMode) {
     if items.count == 1, let first = items.first {
       switch first.kind {
       case .text:
         pasteboard.setString(first.content.text ?? "", forType: .string)
       case .image:
-        writeNative(items: [first], to: pasteboard)
+        writeNative(items: [first], to: pasteboard, imageOutputMode: imageOutputMode)
       case .file:
         let text = (first.content.filePaths ?? []).joined(separator: "\n")
         pasteboard.setString(text, forType: .string)
@@ -56,47 +56,47 @@ struct ClipboardPasteService {
     }
 
     let objects = items.flatMap { item in
-      normalObjects(for: item)
+      normalObjects(for: item, imageOutputMode: imageOutputMode)
     }
     pasteboard.writeObjects(objects)
   }
 
-  private func writeNative(items: [ClipItem], to pasteboard: NSPasteboard) {
+  private func writeNative(items: [ClipItem], to pasteboard: NSPasteboard, imageOutputMode: ImageOutputMode) {
     let objects = items.flatMap { item in
-      nativeObjects(for: item)
+      nativeObjects(for: item, imageOutputMode: imageOutputMode)
     }
     pasteboard.writeObjects(objects)
   }
 
-  private func normalObjects(for item: ClipItem) -> [NSPasteboardWriting] {
+  private func normalObjects(for item: ClipItem, imageOutputMode: ImageOutputMode) -> [NSPasteboardWriting] {
     switch item.kind {
     case .text:
       return [item.content.text as NSString?].compactMap { $0 }
     case .image:
-      guard let path = item.content.imageAssetPath else {
-        return []
-      }
-      let url = AppPaths.assetsDirectoryURL.deletingLastPathComponent().appendingPathComponent(path)
-      return [NSImage(contentsOf: url)].compactMap { $0 }
+      return [loadImage(for: item, imageOutputMode: imageOutputMode)].compactMap { $0 }
     case .file:
       let text = (item.content.filePaths ?? []).joined(separator: "\n")
       return [text as NSString]
     }
   }
 
-  private func nativeObjects(for item: ClipItem) -> [NSPasteboardWriting] {
+  private func nativeObjects(for item: ClipItem, imageOutputMode: ImageOutputMode) -> [NSPasteboardWriting] {
     switch item.kind {
     case .text:
       return [item.content.text as NSString?].compactMap { $0 }
     case .image:
-      guard let path = item.content.imageAssetPath else {
-        return []
-      }
-      let url = AppPaths.assetsDirectoryURL.deletingLastPathComponent().appendingPathComponent(path)
-      return [NSImage(contentsOf: url)].compactMap { $0 }
+      return [loadImage(for: item, imageOutputMode: imageOutputMode)].compactMap { $0 }
     case .file:
       return (item.content.filePaths ?? [])
         .map { URL(fileURLWithPath: $0) as NSURL }
     }
+  }
+
+  private func loadImage(for item: ClipItem, imageOutputMode: ImageOutputMode) -> NSImage? {
+    guard let path = item.content.imageAssetPath else {
+      return nil
+    }
+    return ImageAssetStore(assetsDirectoryURL: AppPaths.assetsDirectoryURL)
+      .load(relativePath: path, mode: imageOutputMode)
   }
 }

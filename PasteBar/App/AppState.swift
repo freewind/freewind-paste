@@ -15,6 +15,7 @@ final class AppState: ObservableObject {
   @Published var statusMessage: String
   @Published var isPopupVisible: Bool
   @Published var searchFocusNonce: Int
+  @Published var imageOutputMode: ImageOutputMode
 
   let persistence: ClipPersistence
   let imageAssetStore: ImageAssetStore
@@ -54,6 +55,7 @@ final class AppState: ObservableObject {
     statusMessage = "Ready"
     isPopupVisible = false
     searchFocusNonce = 0
+    imageOutputMode = .original
   }
 
   func bootstrapIfNeeded() {
@@ -134,8 +136,18 @@ final class AppState: ObservableObject {
     let items = store.selectedItems.isEmpty
       ? [store.focusedItem].compactMap { $0 }
       : store.selectedItems
-    pasteService.paste(items: items, mode: mode)
-    statusMessage = mode == .normalEnter ? "Pasted" : "Native pasted"
+    pasteService.paste(items: items, mode: mode, imageOutputMode: imageOutputMode)
+    let usesLowResolution = imageOutputMode == .lowResolution && items.contains { $0.kind == .image }
+    switch (mode, usesLowResolution) {
+    case (.normalEnter, true):
+      statusMessage = "Pasted low-res image"
+    case (.nativeShiftEnter, true):
+      statusMessage = "Native pasted low-res image"
+    case (.normalEnter, false):
+      statusMessage = "Pasted"
+    case (.nativeShiftEnter, false):
+      statusMessage = "Native pasted"
+    }
   }
 
   func updateSettings(_ mutate: (inout AppSettings) -> Void) {

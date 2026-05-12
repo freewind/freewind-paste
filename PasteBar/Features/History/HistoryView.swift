@@ -38,6 +38,17 @@ struct HistoryView: View {
       .pickerStyle(.segmented)
 
       HStack(spacing: 8) {
+        Button(store.allVisibleChecked ? "Uncheck All" : "Check All") {
+          store.setVisibleChecked(!store.allVisibleChecked)
+        }
+
+        if store.checkedVisibleCount > 0 {
+          Button("Delete Checked") {
+            store.deleteCheckedVisible()
+            appState.persistItems()
+          }
+        }
+
         Button("Reverse") {
           store.reverseSelection()
           appState.persistItems()
@@ -51,6 +62,11 @@ struct HistoryView: View {
         Spacer()
 
         Menu("More") {
+          if store.checkedVisibleCount > 0 {
+            Button("Clear Visible Checks") {
+              store.clearCheckedVisible()
+            }
+          }
           Button("Settings") {
             appState.openSettings()
           }
@@ -61,6 +77,15 @@ struct HistoryView: View {
       }
       .buttonStyle(.borderless)
       .font(.caption)
+
+      if store.checkedVisibleCount > 0 {
+        HStack {
+          Text("Checked in current result: \(store.checkedVisibleCount)")
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+          Spacer()
+        }
+      }
     }
     .padding(.top, 4)
   }

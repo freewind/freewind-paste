@@ -296,7 +296,7 @@
 			path = Preview;
 			sourceTree = "<group>";
 		};
-		"TEMP_A2B78CEE-6131-4C35-B7C7-734145A700ED" /* PreviewAssets */ = {
+		"TEMP_4BA16AA4-8A6B-4671-8574-62A559A8C7A4" /* PreviewAssets */ = {
 			isa = PBXGroup;
 			children = (
 			);
