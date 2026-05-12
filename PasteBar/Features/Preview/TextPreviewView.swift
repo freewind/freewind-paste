@@ -26,15 +26,27 @@ struct TextPreviewView: View {
         }
       }
 
-      SyntaxHighlightingTextView(
-        text: $draftText,
-        identity: item.id,
-        isEditable: true,
-        measuredHeight: $editorHeight,
-        minHeight: minEditorHeight,
-        maxHeight: maxEditorHeight
-      )
-      .id(item.id)
+      ZStack(alignment: .topLeading) {
+        Text(measurementText)
+          .font(.system(size: 14))
+          .lineSpacing(4)
+          .foregroundStyle(.clear)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 12)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .background(
+            GeometryReader { proxy in
+              Color.clear
+                .preference(key: TextHeightPreferenceKey.self, value: proxy.size.height)
+            }
+          )
+
+        TextEditor(text: $draftText)
+          .font(.system(size: 14))
+          .scrollContentBackground(.hidden)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 6)
+      }
       .frame(maxWidth: .infinity)
       .frame(height: editorHeight)
       .background(Color(NSColor.textBackgroundColor))
@@ -42,6 +54,12 @@ struct TextPreviewView: View {
       .onAppear { syncFromItem() }
       .onChange(of: item.id) { _, _ in syncFromItem() }
       .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
+      .onPreferenceChange(TextHeightPreferenceKey.self) { value in
+        let nextHeight = min(max(value, minEditorHeight), maxEditorHeight)
+        if abs(editorHeight - nextHeight) > 0.5 {
+          editorHeight = nextHeight
+        }
+      }
       .onDisappear { handleDisappear() }
 
       if showsMetrics {
@@ -98,7 +116,19 @@ struct TextPreviewView: View {
     appState.persistItems()
   }
 
+  private var measurementText: String {
+    draftText.isEmpty ? " " : "\(draftText)\n "
+  }
+
   private var lineCount: Int {
     max(draftText.split(separator: "\n", omittingEmptySubsequences: false).count, 1)
+  }
+}
+
+private struct TextHeightPreferenceKey: PreferenceKey {
+  static let defaultValue: CGFloat = 44
+
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = nextValue()
   }
 }
