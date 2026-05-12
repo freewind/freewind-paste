@@ -3,6 +3,7 @@ import SwiftUI
 struct FilePreviewView: View {
   @EnvironmentObject private var appState: AppState
   let item: ClipItem
+  var compact: Bool = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -39,7 +40,12 @@ struct FilePreviewView: View {
           .textSelection(.enabled)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
-      .frame(maxHeight: 220)
+      .frame(
+        maxWidth: .infinity,
+        minHeight: compact ? nil : 260,
+        maxHeight: compact ? 220 : .infinity,
+        alignment: .topLeading
+      )
       .padding(10)
       .background(Color.secondary.opacity(0.08))
       .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -65,5 +71,6 @@ struct FilePreviewView: View {
       .font(.caption)
       .foregroundStyle(.secondary)
     }
+    .frame(maxWidth: .infinity, maxHeight: compact ? nil : .infinity, alignment: .topLeading)
   }
 }

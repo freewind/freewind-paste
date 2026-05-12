@@ -7,6 +7,7 @@ struct TextPreviewView: View {
   var showsMetrics: Bool = true
   var minEditorHeight: CGFloat = 44
   var maxEditorHeight: CGFloat = 260
+  var expandsToFill: Bool = false
 
   @State private var draftText: String = ""
   @State private var isSyncingFromItem = false
@@ -47,7 +48,11 @@ struct TextPreviewView: View {
           .padding(.vertical, 6)
       }
       .frame(maxWidth: .infinity)
-      .frame(height: editorHeight)
+      .frame(
+        minHeight: expandsToFill ? max(editorHeight, minEditorHeight) : editorHeight,
+        maxHeight: expandsToFill ? .infinity : editorHeight,
+        alignment: .topLeading
+      )
       .background(Color(NSColor.textBackgroundColor))
       .clipShape(RoundedRectangle(cornerRadius: 8))
       .onAppear { syncFromItem() }
@@ -71,6 +76,7 @@ struct TextPreviewView: View {
         .foregroundStyle(.secondary)
       }
     }
+    .frame(maxWidth: .infinity, maxHeight: expandsToFill ? .infinity : nil, alignment: .topLeading)
   }
 
   private func handleDraftChange(_ newValue: String) {

@@ -5,6 +5,7 @@ struct ImagePreviewView: View {
   let item: ClipItem
   let imageAssetStore: ImageAssetStore
   let outputMode: ImageOutputMode
+  var compact: Bool = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -61,7 +62,11 @@ struct ImagePreviewView: View {
         Image(nsImage: image)
           .resizable()
           .scaledToFit()
-          .frame(maxWidth: .infinity, maxHeight: 320)
+          .frame(
+            maxWidth: .infinity,
+            minHeight: compact ? nil : 280,
+            maxHeight: compact ? 320 : .infinity
+          )
           .background(Color.black.opacity(0.03))
           .clipShape(RoundedRectangle(cornerRadius: 10))
           .contentShape(Rectangle())
@@ -89,6 +94,7 @@ struct ImagePreviewView: View {
       .font(.caption)
       .foregroundStyle(.secondary)
     }
+    .frame(maxWidth: .infinity, maxHeight: compact ? nil : .infinity, alignment: .topLeading)
   }
 
   private var originalSize: (width: Int, height: Int) {
