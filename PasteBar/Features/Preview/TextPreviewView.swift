@@ -29,7 +29,6 @@ struct TextPreviewView: View {
       SyntaxHighlightingTextView(
         text: $draftText,
         identity: item.id,
-        language: isJSON ? "json" : nil,
         isEditable: true,
         measuredHeight: $editorHeight,
         minHeight: minEditorHeight,
@@ -55,10 +54,6 @@ struct TextPreviewView: View {
         .foregroundStyle(.secondary)
       }
     }
-  }
-
-  private var isJSON: Bool {
-    (item.meta.languageGuess ?? LanguageGuessService.guess(for: item.content.text ?? ""))?.lowercased() == "json"
   }
 
   private func handleDraftChange(_ newValue: String) {

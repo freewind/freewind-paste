@@ -4,7 +4,6 @@ import SwiftUI
 struct SyntaxHighlightingTextView: NSViewRepresentable {
   @Binding var text: String
   let identity: String
-  let language: String?
   let isEditable: Bool
   @Binding var measuredHeight: CGFloat
   let minHeight: CGFloat
@@ -13,7 +12,6 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
   init(
     text: Binding<String>,
     identity: String,
-    language: String?,
     isEditable: Bool,
     measuredHeight: Binding<CGFloat>,
     minHeight: CGFloat = 44,
@@ -21,7 +19,6 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
   ) {
     _text = text
     self.identity = identity
-    self.language = language
     self.isEditable = isEditable
     _measuredHeight = measuredHeight
     self.minHeight = minHeight
@@ -69,11 +66,7 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
     coordinator.lastIdentity = identity
     let selectedRange = textView.selectedRange()
     if identityChanged || textView.string != text || textView.textStorage?.length == 0 {
-      if let language {
-        textView.textStorage?.setAttributedString(SyntaxTextHighlighter.highlight(text, language: language))
-      } else {
-        textView.textStorage?.setAttributedString(SyntaxTextHighlighter.plain(text))
-      }
+      textView.string = text
       if identityChanged {
         textView.setSelectedRange(NSRange(location: 0, length: 0))
         scrollView.contentView.scroll(to: .zero)
@@ -125,62 +118,6 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
       if let scrollView = textView.enclosingScrollView {
         parent.syncHeight(textView: textView, scrollView: scrollView, coordinator: self)
       }
-    }
-  }
-}
-
-enum SyntaxTextHighlighter {
-  static func plain(_ text: String) -> NSAttributedString {
-    NSAttributedString(string: text, attributes: baseAttributes())
-  }
-
-  static func highlight(_ text: String, language: String?) -> NSAttributedString {
-    let result = NSMutableAttributedString(attributedString: plain(text))
-
-    apply(pattern: #"(?m)//.*$|#.*$"#, color: .systemGreen, to: result)
-    apply(pattern: #""([^"\\]|\\.)*""#, color: .systemRed, to: result)
-    apply(pattern: #"\b\d+(\.\d+)?\b"#, color: .systemOrange, to: result)
-
-    let keywords: [String] = switch language?.lowercased() {
-    case "swift":
-      ["struct", "class", "enum", "import", "let", "var", "func", "if", "guard", "return"]
-    case "typescript", "javascript":
-      ["const", "let", "function", "return", "if", "else", "import", "export", "class", "interface"]
-    case "json":
-      []
-    case "python":
-      ["def", "class", "import", "return", "if", "elif", "else", "for", "while"]
-    default:
-      ["SELECT", "FROM", "WHERE", "INSERT", "UPDATE", "DELETE"]
-    }
-
-    if !keywords.isEmpty {
-      let pattern = #"\b("# + keywords.joined(separator: "|") + #")\b"#
-      apply(pattern: pattern, color: .systemBlue, to: result, options: [.caseInsensitive])
-    }
-
-    return result
-  }
-
-  private static func baseAttributes() -> [NSAttributedString.Key: Any] {
-    [
-      .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
-      .foregroundColor: NSColor.textColor,
-    ]
-  }
-
-  private static func apply(
-    pattern: String,
-    color: NSColor,
-    to result: NSMutableAttributedString,
-    options: NSRegularExpression.Options = []
-  ) {
-    guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
-      return
-    }
-    let range = NSRange(location: 0, length: result.string.utf16.count)
-    regex.matches(in: result.string, range: range).forEach { match in
-      result.addAttributes([.foregroundColor: color], range: match.range)
     }
   }
 }
