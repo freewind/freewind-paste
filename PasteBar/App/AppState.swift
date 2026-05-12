@@ -313,6 +313,10 @@ final class AppState: ObservableObject {
       return event
     }
 
+    if shouldBypassPopupShortcut(action) {
+      return event
+    }
+
     switch action {
     case .closePopup:
       if uiState.collapseSelectionToAnchor() {
@@ -382,6 +386,18 @@ final class AppState: ObservableObject {
     }
 
     return true
+  }
+
+  private func shouldBypassPopupShortcut(_ action: PopupShortcutAction) -> Bool {
+    guard action == .paste || action == .nativePaste else {
+      return false
+    }
+
+    guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
+      return false
+    }
+
+    return !responder.isFieldEditor
   }
 
   private func capturePasteTargetApp() {
