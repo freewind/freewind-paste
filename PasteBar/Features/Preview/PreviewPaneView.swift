@@ -1,26 +1,58 @@
 import SwiftUI
 
 struct PreviewPaneView: View {
+  private enum MultiSelectionPreviewMode: String, CaseIterable {
+    case split
+    case merged
+
+    var title: String {
+      switch self {
+      case .split:
+        return "Split"
+      case .merged:
+        return "Merged"
+      }
+    }
+  }
+
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
+  @State private var multiSelectionMode: MultiSelectionPreviewMode = .split
+  @State private var mergedDraftText: String = ""
+  @State private var mergedSelectionSignature: String = ""
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      if hasImageSelection {
-        HStack {
-          Spacer()
-          Picker("Image Output", selection: $appState.imageOutputMode) {
-            ForEach(ImageOutputMode.allCases, id: \.self) { mode in
-              Text(mode.title).tag(mode)
+      if showsToolbar {
+        HStack(spacing: 10) {
+          if uiState.selectedItems.count > 1 {
+            Picker("Preview Mode", selection: $multiSelectionMode) {
+              ForEach(MultiSelectionPreviewMode.allCases, id: \.self) { mode in
+                Text(mode.title).tag(mode)
+              }
             }
+            .pickerStyle(.segmented)
+            .frame(width: 160)
           }
-          .pickerStyle(.segmented)
-          .frame(width: 180)
+
+          Spacer()
+
+          if hasImageSelection {
+            Picker("Image Output", selection: $appState.imageOutputMode) {
+              ForEach(ImageOutputMode.allCases, id: \.self) { mode in
+                Text(mode.title).tag(mode)
+              }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 180)
+          }
         }
       }
 
       Group {
-        if uiState.selectedItems.count > 1 {
+        if uiState.selectedItems.count > 1, multiSelectionMode == .merged {
+          mergedSelectionContent
+        } else if uiState.selectedItems.count > 1 {
           multiSelectionContent
         } else if let item = uiState.focusedItem {
           content(item: item)
@@ -31,6 +63,12 @@ struct PreviewPaneView: View {
     }
     .padding(12)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    .onAppear {
+      syncMergedDraft()
+    }
+    .onChange(of: currentSelectionSignature) { _, _ in
+      syncMergedDraft()
+    }
   }
 
   private var multiSelectionContent: some View {
@@ -58,6 +96,30 @@ struct PreviewPaneView: View {
         }
       }
     }
+  }
+
+  private var mergedSelectionContent: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        Text("\(uiState.selectedItems.count) items")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        Spacer()
+        Text("Local scratch")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
+
+      TextEditor(text: $mergedDraftText)
+        .font(.system(size: 14))
+        .scrollContentBackground(.hidden)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(NSColor.textBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
   @ViewBuilder
@@ -111,7 +173,8 @@ struct PreviewPaneView: View {
           showsMetrics: false,
           minEditorHeight: 28,
           maxEditorHeight: 140,
-          expandsToFill: false
+          expandsToFill: false,
+          allowsScrolling: false
         )
       }
     case .image:
@@ -131,6 +194,19 @@ struct PreviewPaneView: View {
       ? [uiState.focusedItem].compactMap { $0 }
       : uiState.selectedItems
     return items.contains { $0.kind == .image }
+  }
+
+  private var showsToolbar: Bool {
+    uiState.selectedItems.count > 1 || hasImageSelection
+  }
+
+  private var currentSelectionSignature: String {
+    uiState.selectedItems
+      .map { item in
+        let updateToken = item.updatedAt.timeIntervalSince1970
+        return "\(item.id)|\(updateToken)"
+      }
+      .joined(separator: "\u{1F}")
   }
 
   private func metaHeader(item: ClipItem) -> some View {
@@ -178,6 +254,34 @@ struct PreviewPaneView: View {
       let count = item.meta.fileCount ?? item.content.filePaths?.count ?? 0
       let size = ByteCountFormatter.string(fromByteCount: item.meta.fileSize ?? 0, countStyle: .file)
       return "\(count) items · \(size)"
+    }
+  }
+
+  private func syncMergedDraft() {
+    let signature = currentSelectionSignature
+    guard signature != mergedSelectionSignature else {
+      return
+    }
+    mergedSelectionSignature = signature
+    mergedDraftText = mergedText(for: uiState.selectedItems)
+  }
+
+  private func mergedText(for items: [ClipItem]) -> String {
+    items
+      .map(mergedBlock(for:))
+      .joined(separator: "\n\n")
+  }
+
+  private func mergedBlock(for item: ClipItem) -> String {
+    switch item.kind {
+    case .text:
+      return item.content.text ?? ""
+    case .image:
+      let width = item.meta.imageWidth ?? 0
+      let height = item.meta.imageHeight ?? 0
+      return "[Image \(width)x\(height)]"
+    case .file:
+      return (item.content.filePaths ?? []).joined(separator: "\n")
     }
   }
 }

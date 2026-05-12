@@ -36,6 +36,23 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
     window.orderOut(nil)
   }
 
+  func focusHistoryList() {
+    guard let window else {
+      return
+    }
+
+    if let tableView = window.contentView?.firstSubview(where: { view in
+      view is NSTableView || view is NSOutlineView
+    }) {
+      window.makeFirstResponder(tableView)
+      return
+    }
+
+    if let scrollView = window.contentView?.firstSubview(where: { $0 is NSScrollView }) {
+      window.makeFirstResponder(scrollView)
+    }
+  }
+
   private func makeWindow(appState: AppState) -> NSWindow {
     let root = HistoryView()
       .environmentObject(appState)
@@ -126,5 +143,21 @@ private struct TransientImagePreviewContent: View {
         .padding(20)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+}
+
+private extension NSView {
+  func firstSubview(where predicate: (NSView) -> Bool) -> NSView? {
+    if predicate(self) {
+      return self
+    }
+
+    for subview in subviews {
+      if let matched = subview.firstSubview(where: predicate) {
+        return matched
+      }
+    }
+
+    return nil
   }
 }

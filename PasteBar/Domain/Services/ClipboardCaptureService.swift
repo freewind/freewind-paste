@@ -21,9 +21,6 @@ final class ClipboardCaptureService {
       guard let item = self.parser.parse() else {
         return
       }
-      if item.kind == .text && !self.copyCommandMonitor.shouldAcceptChange() {
-        return
-      }
       onCapture(item)
     }
   }

@@ -8,6 +8,7 @@ struct TextPreviewView: View {
   var minEditorHeight: CGFloat = 44
   var maxEditorHeight: CGFloat = 260
   var expandsToFill: Bool = false
+  var allowsScrolling: Bool = true
 
   @State private var draftText: String = ""
   @State private var isSyncingFromItem = false
@@ -44,6 +45,7 @@ struct TextPreviewView: View {
         TextEditor(text: $draftText)
           .font(.system(size: 14))
           .scrollContentBackground(.hidden)
+          .scrollDisabled(!allowsScrolling)
           .padding(.horizontal, 8)
           .padding(.vertical, 6)
       }

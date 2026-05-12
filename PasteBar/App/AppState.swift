@@ -291,9 +291,17 @@ final class AppState: ObservableObject {
     guard
       isPopupVisible,
       event.window === popupController.currentWindow,
-      event.type == .keyDown,
-      event.keyCode == 51
+      event.type == .keyDown
     else {
+      return event
+    }
+
+    if event.keyCode == 48 {
+      popupController.focusHistoryList()
+      return nil
+    }
+
+    guard event.keyCode == 51 else {
       return event
     }
 
