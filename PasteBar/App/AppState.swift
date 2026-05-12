@@ -368,6 +368,10 @@ final class AppState: ObservableObject {
     return event
   }
 
+  func moveSelectionShortcut(by offset: Int) {
+    moveSelectionBlock(by: offset)
+  }
+
   private func shouldBypassDeleteShortcut() -> Bool {
     guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
       return false

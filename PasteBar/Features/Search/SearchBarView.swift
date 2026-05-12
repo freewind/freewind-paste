@@ -11,7 +11,8 @@ struct SearchBarView: View {
       focusNonce: appState.searchFocusNonce,
       handlePopupKeyDown: appState.handlePopupKeyDown,
       moveFocus: uiState.moveFocus,
-      moveFocusExtendingSelection: uiState.moveFocusExtendingSelection
+      moveFocusExtendingSelection: uiState.moveFocusExtendingSelection,
+      moveSelectionBlock: appState.moveSelectionShortcut
     )
     .frame(height: 38)
     .onChange(of: uiState.searchQuery) { _, _ in
@@ -26,12 +27,14 @@ private struct PopupAwareSearchField: NSViewRepresentable {
   let handlePopupKeyDown: (NSEvent) -> NSEvent?
   let moveFocus: (Int) -> Void
   let moveFocusExtendingSelection: (Int) -> Void
+  let moveSelectionBlock: (Int) -> Void
 
   func makeCoordinator() -> Coordinator {
     Coordinator(
       text: $text,
       moveFocus: moveFocus,
-      moveFocusExtendingSelection: moveFocusExtendingSelection
+      moveFocusExtendingSelection: moveFocusExtendingSelection,
+      moveSelectionBlock: moveSelectionBlock
     )
   }
 
@@ -60,16 +63,19 @@ private struct PopupAwareSearchField: NSViewRepresentable {
     @Binding private var text: String
     private let moveFocus: (Int) -> Void
     private let moveFocusExtendingSelection: (Int) -> Void
+    private let moveSelectionBlock: (Int) -> Void
     private var lastFocusNonce: Int?
 
     init(
       text: Binding<String>,
       moveFocus: @escaping (Int) -> Void,
-      moveFocusExtendingSelection: @escaping (Int) -> Void
+      moveFocusExtendingSelection: @escaping (Int) -> Void,
+      moveSelectionBlock: @escaping (Int) -> Void
     ) {
       _text = text
       self.moveFocus = moveFocus
       self.moveFocusExtendingSelection = moveFocusExtendingSelection
+      self.moveSelectionBlock = moveSelectionBlock
     }
 
     func controlTextDidChange(_ notification: Notification) {
@@ -106,6 +112,12 @@ private struct PopupAwareSearchField: NSViewRepresentable {
         return true
       case #selector(NSResponder.moveDownAndModifySelection(_:)):
         moveFocusExtendingSelection(1)
+        return true
+      case #selector(NSResponder.moveParagraphBackwardAndModifySelection(_:)):
+        moveSelectionBlock(-1)
+        return true
+      case #selector(NSResponder.moveParagraphForwardAndModifySelection(_:)):
+        moveSelectionBlock(1)
         return true
       default:
         return false
