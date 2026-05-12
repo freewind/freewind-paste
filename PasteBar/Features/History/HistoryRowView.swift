@@ -51,7 +51,7 @@ struct HistoryRowView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(Rectangle())
     .padding(.horizontal, 8)
-    .padding(.vertical, 6)
+    .padding(.vertical, 2)
     .background(rowBackground)
     .overlay(alignment: .topLeading) {
       if dropLine == .before {
