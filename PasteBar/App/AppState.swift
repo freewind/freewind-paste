@@ -33,17 +33,27 @@ final class AppState: ObservableObject {
   let settingsWindowController: SettingsWindowController
   let menuBarController: MenuBarController
   private var isBootstrapped = false
+  private var pasteTargetApp: NSRunningApplication?
 
   init(
-    persistence: ClipPersistence = AppPaths.persistence,
-    accessibilityAccess: AccessibilityPasteTrigger = AccessibilityPasteTrigger(),
-    hotkeyService: HotkeyService = HotkeyService(),
-    launchAtLoginService: LaunchAtLoginService = LaunchAtLoginService(),
-    popupController: PopupWindowController = PopupWindowController(),
-    transientImagePreviewController: TransientImagePreviewController = TransientImagePreviewController(),
-    settingsWindowController: SettingsWindowController = SettingsWindowController(),
-    menuBarController: MenuBarController = MenuBarController()
+    persistence: ClipPersistence? = nil,
+    accessibilityAccess: AccessibilityPasteTrigger? = nil,
+    hotkeyService: HotkeyService? = nil,
+    launchAtLoginService: LaunchAtLoginService? = nil,
+    popupController: PopupWindowController? = nil,
+    transientImagePreviewController: TransientImagePreviewController? = nil,
+    settingsWindowController: SettingsWindowController? = nil,
+    menuBarController: MenuBarController? = nil
   ) {
+    let persistence = persistence ?? AppPaths.persistence
+    let accessibilityAccess = accessibilityAccess ?? AccessibilityPasteTrigger()
+    let hotkeyService = hotkeyService ?? HotkeyService()
+    let launchAtLoginService = launchAtLoginService ?? LaunchAtLoginService()
+    let popupController = popupController ?? PopupWindowController()
+    let transientImagePreviewController = transientImagePreviewController ?? TransientImagePreviewController()
+    let settingsWindowController = settingsWindowController ?? SettingsWindowController()
+    let menuBarController = menuBarController ?? MenuBarController()
+
     imageAssetStore = ImageAssetStore(assetsDirectoryURL: AppPaths.assetsDirectoryURL)
     repository = ClipRepository(
       persistence: persistence,
@@ -121,6 +131,7 @@ final class AppState: ObservableObject {
   }
 
   func showPopup() {
+    capturePasteTargetApp()
     uiState.selectFirstVisible()
     searchFocusNonce += 1
     popupController.show(with: self)
@@ -156,7 +167,8 @@ final class AppState: ObservableObject {
     if let message = workflowService.pasteSelection(
       mode: mode,
       imageOutputMode: imageOutputMode,
-      imageMaxDimension: imageLowResMaxDimension
+      imageMaxDimension: imageLowResMaxDimension,
+      targetApplication: pasteTargetApp
     ) {
       statusMessage = message
       if message.hasPrefix("Pasted") || message.hasPrefix("Native pasted") {
@@ -296,41 +308,46 @@ final class AppState: ObservableObject {
       return event
     }
 
-    if event.keyCode == 48 {
-      popupController.focusHistoryList()
-      return nil
+    guard let action = popupShortcutAction(for: event) else {
+      return event
     }
 
-    if event.keyCode == 53 {
+    switch action {
+    case .closePopup:
       hidePopup()
-      return nil
-    }
-
-    if
-      let responder = popupController.currentWindow?.firstResponder as? NSTextView,
-      responder.isFieldEditor
-    {
-      switch event.keyCode {
-      case 125:
-        uiState.moveFocus(by: 1)
-        return nil
-      case 126:
-        uiState.moveFocus(by: -1)
-        return nil
-      default:
-        break
+    case .focusList:
+      popupController.focusHistoryList()
+    case .paste:
+      pasteSelection(mode: .normalEnter)
+    case .nativePaste:
+      pasteSelection(mode: .nativeShiftEnter)
+    case .focusPrevious:
+      uiState.moveFocus(by: -1)
+    case .focusNext:
+      uiState.moveFocus(by: 1)
+    case .expandPrevious:
+      uiState.moveFocusExtendingSelection(by: -1)
+    case .expandNext:
+      uiState.moveFocusExtendingSelection(by: 1)
+    case .jumpToTop:
+      uiState.moveFocusToScopeBoundary(isStart: true)
+    case .jumpToBottom:
+      uiState.moveFocusToScopeBoundary(isStart: false)
+    case .moveSelectionUp:
+      moveSelectionBlock(by: -1)
+    case .moveSelectionDown:
+      moveSelectionBlock(by: 1)
+    case .deleteSelection:
+      if shouldBypassDeleteShortcut() {
+        return event
       }
+      deleteSelection(permanently: uiState.currentTab == .trash)
+    case .deleteSelectionPermanently:
+      if shouldBypassDeleteShortcut() {
+        return event
+      }
+      deleteSelection(permanently: true)
     }
-
-    guard event.keyCode == 51 else {
-      return event
-    }
-
-    if shouldBypassDeleteShortcut() {
-      return event
-    }
-
-    deleteSelection(permanently: event.modifierFlags.contains(.command) || uiState.currentTab == .trash)
     return nil
   }
 
@@ -344,6 +361,55 @@ final class AppState: ObservableObject {
     }
 
     return true
+  }
+
+  private func capturePasteTargetApp() {
+    guard
+      let app = NSWorkspace.shared.frontmostApplication,
+      app.bundleIdentifier != Bundle.main.bundleIdentifier
+    else {
+      return
+    }
+    pasteTargetApp = app
+  }
+
+  private func popupShortcutAction(for event: NSEvent) -> PopupShortcutAction? {
+    PopupShortcutAction.allCases.first { action in
+      settings.popupHotkeys.hotkey(for: action).matches(event)
+    }
+  }
+
+  private func moveSelectionBlock(by offset: Int) {
+    guard let focusedID = uiState.focusedID else {
+      return
+    }
+
+    guard
+      let group = uiState.groupedVisibleItems.first(where: { group in
+        group.items.contains(where: { $0.id == focusedID })
+      })
+    else {
+      return
+    }
+
+    let groupIDs = group.items.map(\.id)
+    let movingIDs = groupIDs.filter { uiState.selectedIDs.contains($0) }
+
+    guard !movingIDs.isEmpty else {
+      return
+    }
+
+    guard Set(movingIDs) == uiState.selectedIDs else {
+      statusMessage = "Selection must stay in one group"
+      return
+    }
+
+    if !workflowService.moveSelectionBlock(within: groupIDs, itemIDs: movingIDs, by: offset) {
+      return
+    }
+
+    uiState.focusedID = focusedID
+    statusMessage = offset < 0 ? "Moved up" : "Moved down"
   }
 
   private func primaryResourceURL(for item: ClipItem) -> URL? {

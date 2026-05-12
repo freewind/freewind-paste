@@ -27,14 +27,14 @@ final class SettingsWindowController {
 
     let hostingView = NSHostingView(rootView: root)
     let window = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 620, height: 500),
+      contentRect: NSRect(x: 0, y: 0, width: 720, height: 760),
       styleMask: [.titled, .closable, .miniaturizable],
       backing: .buffered,
       defer: false
     )
     window.title = "Settings"
     window.isReleasedWhenClosed = false
-    window.minSize = NSSize(width: 620, height: 460)
+    window.minSize = NSSize(width: 680, height: 560)
     window.contentView = hostingView
     return window
   }

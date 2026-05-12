@@ -46,10 +46,58 @@ final class ClipStore: ObservableObject {
       .map(\.element.id)
     let clamped = min(destination, remainingVisible.count)
     let newVisibleOrder = Array(remainingVisible[..<clamped]) + movingIDs + Array(remainingVisible[clamped...])
+    reorderItems(within: sectionIDs, newVisibleOrder: newVisibleOrder)
+  }
 
+  func moveItemBlock(
+    within sectionIDs: [String],
+    itemIDs: [String],
+    by offset: Int
+  ) -> Bool {
+    guard offset == -1 || offset == 1 else {
+      return false
+    }
+
+    let movingSet = Set(itemIDs)
+    let movingIDs = sectionIDs.filter { movingSet.contains($0) }
+    guard
+      !movingIDs.isEmpty,
+      let firstID = movingIDs.first,
+      let lastID = movingIDs.last,
+      let firstIndex = sectionIDs.firstIndex(of: firstID),
+      let lastIndex = sectionIDs.firstIndex(of: lastID)
+    else {
+      return false
+    }
+
+    let remainingIDs = sectionIDs.filter { !movingSet.contains($0) }
+    let insertIndex: Int
+
+    if offset < 0 {
+      guard firstIndex > 0 else {
+        return false
+      }
+      let pivotID = sectionIDs[firstIndex - 1]
+      insertIndex = remainingIDs.firstIndex(of: pivotID) ?? 0
+    } else {
+      guard lastIndex < sectionIDs.count - 1 else {
+        return false
+      }
+      let pivotID = sectionIDs[lastIndex + 1]
+      insertIndex = (remainingIDs.firstIndex(of: pivotID) ?? (remainingIDs.count - 1)) + 1
+    }
+
+    let newVisibleOrder = Array(remainingIDs[..<insertIndex]) + movingIDs + Array(remainingIDs[insertIndex...])
+    reorderItems(within: sectionIDs, newVisibleOrder: newVisibleOrder)
+    return true
+  }
+
+  private func reorderItems(within sectionIDs: [String], newVisibleOrder: [String]) {
     let visibleIDSet = Set(sectionIDs)
     let anchored = items.filter { !visibleIDSet.contains($0.id) }
-    let reordered = newVisibleOrder.compactMap { id in items.first(where: { $0.id == id }) }
+    let reordered = newVisibleOrder.compactMap { id in
+      items.first(where: { $0.id == id })
+    }
 
     var result: [ClipItem] = []
     var reorderedIndex = 0

@@ -5,7 +5,13 @@ import Foundation
 struct ClipboardPasteService {
   let trigger: AccessibilityPasteTrigger
 
-  func paste(items: [ClipItem], mode: PasteMode, imageOutputMode: ImageOutputMode, imageMaxDimension: Double) {
+  func paste(
+    items: [ClipItem],
+    mode: PasteMode,
+    imageOutputMode: ImageOutputMode,
+    imageMaxDimension: Double,
+    targetApplication: NSRunningApplication?
+  ) {
     guard !items.isEmpty else {
       return
     }
@@ -20,7 +26,11 @@ struct ClipboardPasteService {
       writeNative(items: items, to: pasteboard, imageOutputMode: imageOutputMode, imageMaxDimension: imageMaxDimension)
     }
 
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+      targetApplication?.activate()
+    }
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
       trigger.triggerPaste()
     }
   }
@@ -137,7 +147,8 @@ final class ClipWorkflowService {
   func pasteSelection(
     mode: PasteMode,
     imageOutputMode: ImageOutputMode,
-    imageMaxDimension: Double
+    imageMaxDimension: Double,
+    targetApplication: NSRunningApplication?
   ) -> String? {
     let items = uiState.selectedItems.isEmpty
       ? [uiState.focusedItem].compactMap { $0 }
@@ -151,7 +162,8 @@ final class ClipWorkflowService {
       items: activeItems,
       mode: mode,
       imageOutputMode: imageOutputMode,
-      imageMaxDimension: imageMaxDimension
+      imageMaxDimension: imageMaxDimension,
+      targetApplication: targetApplication
     )
 
     let usesLowResolution = imageOutputMode == .lowResolution && activeItems.contains { $0.kind == .image }
@@ -191,6 +203,15 @@ final class ClipWorkflowService {
     store.moveItems(within: sectionIDs, from: offsets, to: destination)
     uiState.normalizeSelection()
     commitItems()
+  }
+
+  func moveSelectionBlock(within sectionIDs: [String], itemIDs: [String], by offset: Int) -> Bool {
+    guard store.moveItemBlock(within: sectionIDs, itemIDs: itemIDs, by: offset) else {
+      return false
+    }
+    uiState.normalizeSelection()
+    commitItems()
+    return true
   }
 
   func reverseSelection() {

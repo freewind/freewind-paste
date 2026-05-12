@@ -21,18 +21,5 @@ struct SearchBarView: View {
       .onChange(of: uiState.searchQuery) { _, _ in
         uiState.selectFirstVisible()
       }
-      .onSubmit {
-        appState.pasteSelection(mode: .normalEnter)
-      }
-      .onMoveCommand { direction in
-        switch direction {
-        case .up:
-          uiState.moveFocus(by: -1)
-        case .down:
-          uiState.moveFocus(by: 1)
-        default:
-          break
-        }
-      }
   }
 }

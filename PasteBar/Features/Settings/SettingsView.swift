@@ -4,70 +4,101 @@ struct SettingsView: View {
   @EnvironmentObject private var appState: AppState
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      sectionCard("Accessibility") {
-        HStack(spacing: 10) {
-          Text("Status")
-          Spacer()
-          Text(appState.accessibilityGranted ? "Granted" : "Not Granted")
-            .foregroundStyle(appState.accessibilityGranted ? .green : .orange)
+    ScrollView {
+      VStack(alignment: .leading, spacing: 10) {
+        sectionCard("Accessibility") {
+          HStack(spacing: 10) {
+            Text("Status")
+            Spacer()
+            Text(appState.accessibilityGranted ? "Granted" : "Not Granted")
+              .foregroundStyle(appState.accessibilityGranted ? .green : .orange)
+          }
+
+          HStack(spacing: 10) {
+            Text("Needs Accessibility to auto-paste into front app.")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+            Spacer()
+            Button("Grant / Open Settings") {
+              appState.requestAccessibilityPermission()
+              appState.openAccessibilitySettings()
+            }
+          }
         }
 
-        HStack(spacing: 10) {
-          Text("Needs Accessibility to auto-paste into front app.")
+        Divider()
+
+        sectionCard("Behavior") {
+          Toggle(
+            "Launch at Login",
+            isOn: Binding(
+              get: { appState.settings.launchAtLogin },
+              set: { value in
+                appState.updateSettings { $0.launchAtLogin = value }
+              }
+            )
+          )
+        }
+
+        Divider()
+
+        sectionCard("Global Hotkey") {
+          HotkeyRecorderView(
+            title: "Open Popup",
+            hotkey: appState.settings.hotkey,
+            requiresModifier: true
+          ) { hotkey in
+            appState.updateSettings { $0.hotkey = hotkey }
+          }
+
+          Text("Global hotkey requires modifiers.")
             .font(.caption)
             .foregroundStyle(.secondary)
-          Spacer()
-          Button("Grant / Open Settings") {
-            appState.requestAccessibilityPermission()
-            appState.openAccessibilitySettings()
-          }
         }
-      }
 
-      Divider()
+        Divider()
 
-      sectionCard("Behavior") {
-        Toggle(
-          "Launch at Login",
-          isOn: Binding(
-            get: { appState.settings.launchAtLogin },
-            set: { value in
-              appState.updateSettings { $0.launchAtLogin = value }
+        sectionCard("Popup Hotkeys") {
+          VStack(alignment: .leading, spacing: 10) {
+            ForEach(PopupShortcutAction.allCases) { action in
+              HotkeyRecorderView(
+                title: action.title,
+                hotkey: appState.settings.popupHotkeys.hotkey(for: action),
+                requiresModifier: false
+              ) { hotkey in
+                appState.updateSettings { settings in
+                  settings.popupHotkeys.set(hotkey, for: action)
+                }
+              }
             }
-          )
-        )
-      }
-
-      Divider()
-
-      sectionCard("Hotkey") {
-        HotkeyRecorderView()
-        Text("Press Record, then press modifiers + key.")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-      }
-
-      Divider()
-
-      sectionCard("Data", danger: true) {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-          Text("Danger zone")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.red)
-          Spacer()
-          Button("Clear All Items") {
-            appState.clearAll()
           }
-          .foregroundStyle(.red)
+
+          Text("Popup shortcuts allow single keys or combos.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
 
-        Text("Clear all history is destructive and cannot be undone.")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        Divider()
+
+        sectionCard("Data", danger: true) {
+          HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text("Danger zone")
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(.red)
+            Spacer()
+            Button("Clear All Items") {
+              appState.clearAll()
+            }
+            .foregroundStyle(.red)
+          }
+
+          Text("Clear all history is destructive and cannot be undone.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
       }
+      .padding(18)
     }
-    .padding(18)
     .onAppear {
       appState.refreshAccessibilityStatus()
     }

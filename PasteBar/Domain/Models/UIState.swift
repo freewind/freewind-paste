@@ -231,6 +231,45 @@ final class ClipViewState: ObservableObject {
     selectionAnchorID = nextID
   }
 
+  func moveFocusExtendingSelection(by offset: Int) {
+    let orderedIDs = visibleItems.map(\.id)
+    guard !orderedIDs.isEmpty else {
+      selectedIDs.removeAll()
+      focusedID = nil
+      return
+    }
+
+    let anchorID = selectionAnchorID ?? focusedID ?? orderedIDs.first
+    guard let anchorID, let anchorIndex = orderedIDs.firstIndex(of: anchorID) else {
+      moveFocus(by: offset)
+      return
+    }
+
+    let currentIndex = orderedIDs.firstIndex(of: focusedID ?? anchorID) ?? anchorIndex
+    let nextIndex = min(max(currentIndex + offset, 0), orderedIDs.count - 1)
+    let range = anchorIndex <= nextIndex ? anchorIndex...nextIndex : nextIndex...anchorIndex
+    selectedIDs = Set(orderedIDs[range])
+    focusedID = orderedIDs[nextIndex]
+    selectionAnchorID = anchorID
+  }
+
+  func moveFocusToScopeBoundary(isStart: Bool) {
+    let scopeItems: [ClipItem]
+    if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+      scopeItems = groupedVisibleItems.first(where: { $0.title == "Today" })?.items ?? []
+    } else {
+      scopeItems = visibleItems
+    }
+
+    guard let targetID = (isStart ? scopeItems.first : scopeItems.last)?.id else {
+      return
+    }
+
+    selectedIDs = [targetID]
+    focusedID = targetID
+    selectionAnchorID = targetID
+  }
+
   func handleClick(
     on id: String,
     orderedIDs: [String],
