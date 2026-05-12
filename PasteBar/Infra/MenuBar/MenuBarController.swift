@@ -43,10 +43,17 @@ final class MenuBarController: NSObject {
 
     if event.type == .rightMouseUp {
       let menu = NSMenu()
-      menu.addItem(withTitle: "Open", action: #selector(openAction), keyEquivalent: "")
-      menu.addItem(withTitle: "Settings", action: #selector(settingsAction), keyEquivalent: ",")
+      let openItem = menu.addItem(withTitle: "Open", action: #selector(openAction), keyEquivalent: "")
+      openItem.target = self
+
+      let settingsItem = menu.addItem(withTitle: "Settings", action: #selector(settingsAction), keyEquivalent: ",")
+      settingsItem.target = self
+
       menu.addItem(.separator())
-      menu.addItem(withTitle: "Quit", action: #selector(quitAction), keyEquivalent: "q")
+
+      let quitItem = menu.addItem(withTitle: "Quit", action: #selector(quitAction), keyEquivalent: "q")
+      quitItem.target = self
+
       statusItem?.menu = menu
       sender.performClick(nil)
       statusItem?.menu = nil
