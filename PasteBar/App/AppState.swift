@@ -29,6 +29,7 @@ final class AppState: ObservableObject {
   let hotkeyService: HotkeyService
   let launchAtLoginService: LaunchAtLoginService
   let popupController: PopupWindowController
+  let transientImagePreviewController: TransientImagePreviewController
   let settingsWindowController: SettingsWindowController
   let menuBarController: MenuBarController
   private var isBootstrapped = false
@@ -39,6 +40,7 @@ final class AppState: ObservableObject {
     hotkeyService: HotkeyService = HotkeyService(),
     launchAtLoginService: LaunchAtLoginService = LaunchAtLoginService(),
     popupController: PopupWindowController = PopupWindowController(),
+    transientImagePreviewController: TransientImagePreviewController = TransientImagePreviewController(),
     settingsWindowController: SettingsWindowController = SettingsWindowController(),
     menuBarController: MenuBarController = MenuBarController()
   ) {
@@ -54,6 +56,7 @@ final class AppState: ObservableObject {
     self.hotkeyService = hotkeyService
     self.launchAtLoginService = launchAtLoginService
     self.popupController = popupController
+    self.transientImagePreviewController = transientImagePreviewController
     self.settingsWindowController = settingsWindowController
     self.menuBarController = menuBarController
     let loadedSettings = repository.loadSettings()
@@ -200,6 +203,53 @@ final class AppState: ObservableObject {
     }
   }
 
+  func previewImage(_ item: ClipItem) {
+    guard
+      item.kind == .image,
+      let path = item.content.imageAssetPath,
+      let image = imageAssetStore.load(
+        relativePath: path,
+        mode: imageOutputMode,
+        maxDimension: imageLowResMaxDimension
+      )
+    else {
+      statusMessage = "Image missing"
+      return
+    }
+
+    transientImagePreviewController.show(
+      image: image,
+      title: item.titleText
+    )
+  }
+
+  func openItemResource(_ item: ClipItem) {
+    guard let url = primaryResourceURL(for: item) else {
+      statusMessage = "File missing"
+      return
+    }
+    NSWorkspace.shared.open(url)
+  }
+
+  func revealItemResource(_ item: ClipItem) {
+    guard let url = primaryResourceURL(for: item) else {
+      statusMessage = "File missing"
+      return
+    }
+    NSWorkspace.shared.activateFileViewerSelecting([url])
+  }
+
+  func saveItemAs(_ item: ClipItem) {
+    switch item.kind {
+    case .image:
+      saveImageItemAs(item)
+    case .file:
+      saveFileItemAs(item)
+    case .text:
+      break
+    }
+  }
+
   func moveItems(within sectionIDs: [String], from offsets: IndexSet, to destination: Int) {
     workflowService.moveItems(within: sectionIDs, from: offsets, to: destination)
   }
@@ -265,6 +315,113 @@ final class AppState: ObservableObject {
     }
 
     return true
+  }
+
+  private func primaryResourceURL(for item: ClipItem) -> URL? {
+    switch item.kind {
+    case .image:
+      guard let path = item.content.imageAssetPath else {
+        return nil
+      }
+      return imageAssetStore.assetsDirectoryURL.appendingPathComponent(path)
+    case .file:
+      guard let path = item.content.filePaths?.first else {
+        return nil
+      }
+      return URL(fileURLWithPath: path)
+    case .text:
+      return nil
+    }
+  }
+
+  private func saveImageItemAs(_ item: ClipItem) {
+    guard let sourceURL = primaryResourceURL(for: item) else {
+      statusMessage = "Image missing"
+      return
+    }
+
+    let panel = NSSavePanel()
+    panel.canCreateDirectories = true
+    panel.allowedContentTypes = [.png]
+    panel.nameFieldStringValue = defaultExportName(for: item, fallback: "Image") + ".png"
+
+    guard panel.runModal() == .OK, let destinationURL = panel.url else {
+      return
+    }
+
+    do {
+      try copyResource(from: sourceURL, to: destinationURL)
+      statusMessage = "Saved image"
+    } catch {
+      statusMessage = "Save failed"
+    }
+  }
+
+  private func saveFileItemAs(_ item: ClipItem) {
+    let urls = (item.content.filePaths ?? []).map(URL.init(fileURLWithPath:))
+    guard !urls.isEmpty else {
+      statusMessage = "File missing"
+      return
+    }
+
+    if urls.count == 1, let sourceURL = urls.first {
+      let panel = NSSavePanel()
+      panel.canCreateDirectories = true
+      panel.nameFieldStringValue = sourceURL.lastPathComponent
+
+      guard panel.runModal() == .OK, let destinationURL = panel.url else {
+        return
+      }
+
+      do {
+        try copyResource(from: sourceURL, to: destinationURL)
+        statusMessage = "Saved file"
+      } catch {
+        statusMessage = "Save failed"
+      }
+      return
+    }
+
+    let panel = NSOpenPanel()
+    panel.canChooseFiles = false
+    panel.canChooseDirectories = true
+    panel.canCreateDirectories = true
+    panel.allowsMultipleSelection = false
+    panel.prompt = "Save"
+    panel.message = "Choose a folder to save \(urls.count) files."
+
+    guard panel.runModal() == .OK, let directoryURL = panel.url else {
+      return
+    }
+
+    do {
+      for sourceURL in urls {
+        try copyResource(
+          from: sourceURL,
+          to: directoryURL.appendingPathComponent(sourceURL.lastPathComponent)
+        )
+      }
+      statusMessage = "Saved \(urls.count) files"
+    } catch {
+      statusMessage = "Save failed"
+    }
+  }
+
+  private func copyResource(from sourceURL: URL, to destinationURL: URL) throws {
+    let fileManager = FileManager.default
+    if fileManager.fileExists(atPath: destinationURL.path) {
+      try fileManager.removeItem(at: destinationURL)
+    }
+    try fileManager.copyItem(at: sourceURL, to: destinationURL)
+  }
+
+  private func defaultExportName(for item: ClipItem, fallback: String) -> String {
+    let trimmed = item.label.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmed.isEmpty {
+      return trimmed
+    }
+    let sanitized = item.titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+    return sanitized.isEmpty ? fallback : sanitized
   }
 
   private func registerHotkey() {

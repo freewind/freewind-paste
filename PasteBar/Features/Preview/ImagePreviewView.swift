@@ -16,12 +16,34 @@ struct ImagePreviewView: View {
           maxDimension: appState.imageLowResMaxDimension
         )
       {
+        HStack(spacing: 10) {
+          if outputMode == .lowResolution {
+            Text("Long edge \(Int(appState.imageLowResMaxDimension))px")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+          Spacer()
+          Menu {
+            Button("Open") {
+              appState.openItemResource(item)
+            }
+            Button("Reveal in Finder") {
+              appState.revealItemResource(item)
+            }
+            Button("Save As") {
+              appState.saveItemAs(item)
+            }
+          } label: {
+            Image(systemName: "ellipsis.circle")
+              .font(.system(size: 14))
+          }
+          .menuStyle(.borderlessButton)
+          .fixedSize()
+        }
+
         if outputMode == .lowResolution {
           VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-              Text("Long edge \(Int(appState.imageLowResMaxDimension))px")
-                .font(.caption)
-                .foregroundStyle(.secondary)
               Spacer()
               Button("Copy") {
                 appState.copyLowResolutionImage(from: item)
@@ -42,6 +64,10 @@ struct ImagePreviewView: View {
           .frame(maxWidth: .infinity, maxHeight: 320)
           .background(Color.black.opacity(0.03))
           .clipShape(RoundedRectangle(cornerRadius: 10))
+          .contentShape(Rectangle())
+          .onTapGesture {
+            appState.previewImage(item)
+          }
       } else {
         ContentUnavailableView("Image Missing", systemImage: "photo")
       }

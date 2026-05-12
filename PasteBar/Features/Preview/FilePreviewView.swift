@@ -1,11 +1,38 @@
 import SwiftUI
 
 struct FilePreviewView: View {
+  @EnvironmentObject private var appState: AppState
   let item: ClipItem
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       let paths = item.content.filePaths ?? []
+
+      HStack(spacing: 10) {
+        Text("\(item.meta.fileCount ?? paths.count) items")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        Spacer()
+        Menu {
+          Button("Open") {
+            appState.openItemResource(item)
+          }
+          .disabled(paths.isEmpty)
+          Button("Reveal in Finder") {
+            appState.revealItemResource(item)
+          }
+          .disabled(paths.isEmpty)
+          Button("Save As") {
+            appState.saveItemAs(item)
+          }
+          .disabled(paths.isEmpty)
+        } label: {
+          Image(systemName: "ellipsis.circle")
+            .font(.system(size: 14))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+      }
 
       ScrollView {
         Text(paths.joined(separator: "\n"))
@@ -16,6 +43,10 @@ struct FilePreviewView: View {
       .padding(10)
       .background(Color.secondary.opacity(0.08))
       .clipShape(RoundedRectangle(cornerRadius: 10))
+      .contentShape(Rectangle())
+      .onTapGesture {
+        appState.openItemResource(item)
+      }
 
       Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
         GridRow {

@@ -62,3 +62,69 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
     hide()
   }
 }
+
+final class TransientPreviewPanel: NSPanel {
+  override var canBecomeKey: Bool { true }
+  override var canBecomeMain: Bool { false }
+}
+
+@MainActor
+final class TransientImagePreviewController: NSObject, NSWindowDelegate {
+  private var window: NSPanel?
+
+  func show(image: NSImage, title: String) {
+    if window == nil {
+      window = makeWindow()
+    }
+
+    guard let window else {
+      return
+    }
+
+    let width = min(max(image.size.width, 320), 1100)
+    let height = min(max(image.size.height, 220), 820)
+
+    window.title = title
+    window.contentView = NSHostingView(
+      rootView: TransientImagePreviewContent(image: image)
+    )
+    window.setContentSize(NSSize(width: width, height: height))
+    window.center()
+    NSApp.activate(ignoringOtherApps: true)
+    window.makeKeyAndOrderFront(nil)
+  }
+
+  func windowDidResignKey(_ notification: Notification) {
+    window?.orderOut(nil)
+  }
+
+  private func makeWindow() -> NSPanel {
+    let window = TransientPreviewPanel(
+      contentRect: NSRect(x: 0, y: 0, width: 720, height: 520),
+      styleMask: [.titled, .fullSizeContentView],
+      backing: .buffered,
+      defer: false
+    )
+    window.isFloatingPanel = true
+    window.hidesOnDeactivate = true
+    window.isReleasedWhenClosed = false
+    window.collectionBehavior = [.transient, .moveToActiveSpace]
+    window.delegate = self
+    return window
+  }
+}
+
+private struct TransientImagePreviewContent: View {
+  let image: NSImage
+
+  var body: some View {
+    ZStack {
+      Color.black.opacity(0.92)
+      Image(nsImage: image)
+        .resizable()
+        .scaledToFit()
+        .padding(20)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+}
