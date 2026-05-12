@@ -62,7 +62,7 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
     let hostingView = NSHostingView(rootView: root)
     let window = BorderlessPopupWindow(
       contentRect: NSRect(x: 0, y: 0, width: 980, height: 620),
-      styleMask: [.borderless],
+      styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
       backing: .buffered,
       defer: false
     )
@@ -71,6 +71,9 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
     window.isReleasedWhenClosed = false
     window.delegate = self
     window.isMovableByWindowBackground = true
+    window.titleVisibility = .hidden
+    window.titlebarAppearsTransparent = true
+    window.toolbar = nil
     window.contentView = hostingView
     return window
   }

@@ -7,12 +7,10 @@ struct PasteBarApp: App {
 
   var body: some Scene {
     WindowGroup(id: "bootstrap") {
-      Color.clear
-        .frame(width: 1, height: 1)
-        .onAppear {
-          appDelegate.appState = appState
-          appState.bootstrapIfNeeded()
-        }
+      BootstrapLauncherView(appState: appState) {
+        appDelegate.appState = appState
+        appState.bootstrapIfNeeded()
+      }
     }
     .windowStyle(.hiddenTitleBar)
 
@@ -30,6 +28,27 @@ struct PasteBarApp: App {
         }
         .keyboardShortcut(",", modifiers: [.command, .shift])
       }
+    }
+  }
+}
+
+private struct BootstrapLauncherView: NSViewRepresentable {
+  let appState: AppState
+  let onAppear: () -> Void
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView(frame: .zero)
+    DispatchQueue.main.async {
+      onAppear()
+      view.window?.setFrame(NSRect(x: 0, y: 0, width: 1, height: 1), display: false)
+      view.window?.orderOut(nil)
+    }
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    DispatchQueue.main.async {
+      nsView.window?.orderOut(nil)
     }
   }
 }

@@ -1,11 +1,12 @@
 import AppKit
 
 @MainActor
-final class MenuBarController: NSObject {
+final class MenuBarController: NSObject, NSMenuDelegate {
   private var statusItem: NSStatusItem?
   private var onOpen: (() -> Void)?
   private var onSettings: (() -> Void)?
   private var onQuit: (() -> Void)?
+  private var contextMenu: NSMenu?
 
   func install(
     onOpen: @escaping () -> Void,
@@ -43,6 +44,7 @@ final class MenuBarController: NSObject {
 
     if event.type == .rightMouseUp {
       let menu = NSMenu()
+      menu.delegate = self
       let openItem = menu.addItem(withTitle: "Open", action: #selector(openAction), keyEquivalent: "")
       openItem.target = self
 
@@ -54,9 +56,9 @@ final class MenuBarController: NSObject {
       let quitItem = menu.addItem(withTitle: "Quit", action: #selector(quitAction), keyEquivalent: "q")
       quitItem.target = self
 
+      contextMenu = menu
       statusItem?.menu = menu
-      sender.performClick(nil)
-      statusItem?.menu = nil
+      statusItem?.button?.performClick(nil)
       return
     }
 
@@ -76,5 +78,13 @@ final class MenuBarController: NSObject {
   @objc
   private func quitAction() {
     onQuit?()
+  }
+
+  func menuDidClose(_ menu: NSMenu) {
+    guard contextMenu === menu else {
+      return
+    }
+    statusItem?.menu = nil
+    contextMenu = nil
   }
 }

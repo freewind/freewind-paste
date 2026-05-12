@@ -15,9 +15,22 @@ struct HistoryRowView: View {
       leadingPreview
 
       VStack(alignment: .leading, spacing: 2) {
-        Text(title)
-          .font(.system(size: 12))
-          .lineLimit(1)
+        HStack(spacing: 6) {
+          if !item.label.isEmpty {
+            Text(item.label)
+              .font(.system(size: 10, weight: .semibold))
+              .foregroundStyle(.secondary)
+              .padding(.horizontal, 6)
+              .padding(.vertical, 1)
+              .background(Color.secondary.opacity(0.12))
+              .clipShape(Capsule())
+          }
+
+          Text(contentTitle)
+            .font(.system(size: 12))
+            .lineLimit(1)
+        }
+
         if !subtitle.isEmpty {
           Text(subtitle)
             .font(.system(size: 11))
@@ -95,10 +108,7 @@ struct HistoryRowView: View {
     }
   }
 
-  private var title: String {
-    if !item.label.isEmpty {
-      return item.label
-    }
+  private var contentTitle: String {
     return item.titleText
   }
 

@@ -1,9 +1,11 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct HistoryListView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
   @EnvironmentObject private var store: ClipStore
+  @State private var draggedItemID: String?
 
   var body: some View {
     List(selection: $uiState.selectedIDs) {
@@ -53,9 +55,21 @@ struct HistoryListView: View {
                   }
                 }
               }
-          }
-          .onMove { offsets, destination in
-            appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
+              .onDrag {
+                draggedItemID = item.id
+                return NSItemProvider(object: item.id as NSString)
+              }
+              .onDrop(
+                of: [UTType.text],
+                delegate: HistoryRowDropDelegate(
+                  targetItemID: item.id,
+                  groupItemIDs: group.items.map(\.id),
+                  draggedItemID: $draggedItemID,
+                  onMove: { offsets, destination in
+                    appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
+                  }
+                )
+              )
           }
         }
       }
@@ -80,5 +94,39 @@ struct HistoryListView: View {
   private func allFavorites(in ids: Set<String>) -> Bool {
     let targets = store.items.filter { ids.contains($0.id) }
     return !targets.isEmpty && targets.allSatisfy(\.favorite)
+  }
+}
+
+private struct HistoryRowDropDelegate: DropDelegate {
+  let targetItemID: String
+  let groupItemIDs: [String]
+  @Binding var draggedItemID: String?
+  let onMove: (IndexSet, Int) -> Void
+
+  func dropEntered(info: DropInfo) {
+    guard
+      let draggedItemID,
+      draggedItemID != targetItemID,
+      let from = groupItemIDs.firstIndex(of: draggedItemID),
+      let to = groupItemIDs.firstIndex(of: targetItemID)
+    else {
+      return
+    }
+
+    let destination = to > from ? to + 1 : to
+    onMove(IndexSet(integer: from), destination)
+  }
+
+  func performDrop(info: DropInfo) -> Bool {
+    draggedItemID = nil
+    return true
+  }
+
+  func dropUpdated(info: DropInfo) -> DropProposal? {
+    DropProposal(operation: .move)
+  }
+
+  func validateDrop(info: DropInfo) -> Bool {
+    draggedItemID != nil
   }
 }

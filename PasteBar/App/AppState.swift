@@ -301,6 +301,27 @@ final class AppState: ObservableObject {
       return nil
     }
 
+    if event.keyCode == 53 {
+      hidePopup()
+      return nil
+    }
+
+    if
+      let responder = popupController.currentWindow?.firstResponder as? NSTextView,
+      responder.isFieldEditor
+    {
+      switch event.keyCode {
+      case 125:
+        uiState.moveFocus(by: 1)
+        return nil
+      case 126:
+        uiState.moveFocus(by: -1)
+        return nil
+      default:
+        break
+      }
+    }
+
     guard event.keyCode == 51 else {
       return event
     }

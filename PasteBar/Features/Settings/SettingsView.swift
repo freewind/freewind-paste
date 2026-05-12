@@ -4,68 +4,70 @@ struct SettingsView: View {
   @EnvironmentObject private var appState: AppState
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 0) {
-        sectionCard("Accessibility") {
-          HStack {
-            Text("Status")
-            Spacer()
-            Text(appState.accessibilityGranted ? "Granted" : "Not Granted")
-              .foregroundStyle(appState.accessibilityGranted ? .green : .orange)
-          }
+    VStack(alignment: .leading, spacing: 10) {
+      sectionCard("Accessibility") {
+        HStack(spacing: 10) {
+          Text("Status")
+          Spacer()
+          Text(appState.accessibilityGranted ? "Granted" : "Not Granted")
+            .foregroundStyle(appState.accessibilityGranted ? .green : .orange)
+        }
 
+        HStack(spacing: 10) {
           Text("Needs Accessibility to auto-paste into front app.")
             .font(.caption)
             .foregroundStyle(.secondary)
-
+          Spacer()
           Button("Grant / Open Settings") {
             appState.requestAccessibilityPermission()
             appState.openAccessibilitySettings()
           }
         }
+      }
 
-        Divider().padding(.vertical, 12)
+      Divider()
 
-        sectionCard("Behavior") {
-          Toggle(
-            "Launch at Login",
-            isOn: Binding(
-              get: { appState.settings.launchAtLogin },
-              set: { value in
-                appState.updateSettings { $0.launchAtLogin = value }
-              }
-            )
+      sectionCard("Behavior") {
+        Toggle(
+          "Launch at Login",
+          isOn: Binding(
+            get: { appState.settings.launchAtLogin },
+            set: { value in
+              appState.updateSettings { $0.launchAtLogin = value }
+            }
           )
-        }
+        )
+      }
 
-        Divider().padding(.vertical, 12)
+      Divider()
 
-        sectionCard("Hotkey") {
-          HotkeyRecorderView()
-          Text("Press Record, then press modifiers + key.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
+      sectionCard("Hotkey") {
+        HotkeyRecorderView()
+        Text("Press Record, then press modifiers + key.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+      }
 
-        Divider().padding(.vertical, 12)
+      Divider()
 
-        sectionCard("Data", danger: true) {
+      sectionCard("Data", danger: true) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
           Text("Danger zone")
             .font(.caption.weight(.semibold))
             .foregroundStyle(.red)
-
-          Text("Clear all history is destructive and cannot be undone.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
+          Spacer()
           Button("Clear All Items") {
             appState.clearAll()
           }
           .foregroundStyle(.red)
         }
+
+        Text("Clear all history is destructive and cannot be undone.")
+          .font(.caption)
+          .foregroundStyle(.secondary)
       }
-      .padding(20)
     }
+    .padding(18)
     .onAppear {
       appState.refreshAccessibilityStatus()
     }
@@ -80,12 +82,12 @@ struct SettingsView: View {
     danger: Bool = false,
     @ViewBuilder content: () -> some View
   ) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: 8) {
       Text(title)
         .font(.headline)
       content()
     }
-    .padding(14)
+    .padding(12)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(danger ? Color.red.opacity(0.08) : Color(NSColor.controlBackgroundColor))
     .overlay(
