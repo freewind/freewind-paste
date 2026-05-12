@@ -9,12 +9,13 @@ struct HistoryListView: View {
   @State private var dropTarget: HistoryDropTarget?
 
   var body: some View {
-    List(selection: $uiState.selectedIDs) {
+    List {
       ForEach(uiState.groupedVisibleItems) { group in
         Section(group.title) {
           ForEach(group.items) { item in
             HistoryRowView(
               item: item,
+              isDragActive: draggedItemID != nil,
               isDragged: draggedItemID == item.id,
               dropLine: dropLine(for: item.id)
             )

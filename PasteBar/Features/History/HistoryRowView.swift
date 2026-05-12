@@ -10,6 +10,7 @@ struct HistoryRowView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
   let item: ClipItem
+  var isDragActive: Bool = false
   var isDragged: Bool = false
   var dropLine: DropLine = .none
   @State private var isHovering = false
@@ -117,6 +118,10 @@ struct HistoryRowView: View {
       return Color.accentColor.opacity(0.10)
     }
 
+    if dropLine != .none {
+      return .clear
+    }
+
     if uiState.focusedID == item.id {
       return Color.accentColor.opacity(0.16)
     }
@@ -125,7 +130,7 @@ struct HistoryRowView: View {
       return Color.accentColor.opacity(0.10)
     }
 
-    if isHovering {
+    if isHovering && !isDragActive {
       return Color.secondary.opacity(0.06)
     }
 
