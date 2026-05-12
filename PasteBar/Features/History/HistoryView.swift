@@ -5,20 +5,25 @@ struct HistoryView: View {
   @EnvironmentObject private var store: ClipStore
 
   var body: some View {
-    NavigationSplitView {
-      VStack(spacing: 8) {
-        SearchBarView()
-          .padding(.top, 8)
+    VStack(spacing: 0) {
+      SearchBarView()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
 
-        HistoryListView()
+      Divider()
 
-        sidebarFooter
+      NavigationSplitView {
+        VStack(spacing: 8) {
+          HistoryListView()
+
+          sidebarFooter
+        }
+        .padding(.horizontal, 10)
+        .padding(.bottom, 8)
+        .frame(minWidth: 360, idealWidth: 420, maxWidth: 460, maxHeight: .infinity)
+      } detail: {
+        PreviewPaneView()
       }
-      .padding(.horizontal, 10)
-      .padding(.bottom, 8)
-      .frame(minWidth: 360, idealWidth: 420, maxWidth: 460, maxHeight: .infinity)
-    } detail: {
-      PreviewPaneView()
     }
     .frame(minWidth: 960, minHeight: 620)
     .navigationSplitViewColumnWidth(min: 360, ideal: 420, max: 460)
@@ -44,12 +49,6 @@ struct HistoryView: View {
         }
 
         Spacer()
-
-        Button(store.previewLocked ? "Unlock" : "Lock") {
-          appState.updateSettings {
-            $0.previewLocked.toggle()
-          }
-        }
 
         Menu("More") {
           Button("Settings") {

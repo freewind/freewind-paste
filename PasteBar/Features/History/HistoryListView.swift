@@ -13,7 +13,11 @@ struct HistoryListView: View {
               .tag(item.id)
               .contentShape(Rectangle())
               .onTapGesture {
-                store.focus(item.id)
+                store.handleClick(
+                  on: item.id,
+                  orderedIDs: store.visibleItems.map(\.id),
+                  modifiers: NSEvent.modifierFlags
+                )
               }
               .contextMenu {
                 Button(item.favorite ? "Unfavorite" : "Favorite") {
@@ -45,7 +49,7 @@ struct HistoryListView: View {
     .environment(\.defaultMinListRowHeight, 34)
     .onChange(of: store.selectedIDs) { _, newValue in
       if let id = newValue.first {
-        store.focus(id)
+        store.focusedID = id
       }
     }
   }

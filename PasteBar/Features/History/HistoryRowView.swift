@@ -19,10 +19,12 @@ struct HistoryRowView: View {
         Text(title)
           .font(.system(size: 12))
           .lineLimit(1)
-        Text(subtitle)
-          .font(.system(size: 11))
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
+        if !subtitle.isEmpty {
+          Text(subtitle)
+            .font(.system(size: 11))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
       }
     }
     .padding(.vertical, 1)
@@ -50,7 +52,7 @@ struct HistoryRowView: View {
         .font(.system(size: 11))
         .foregroundStyle(item.favorite ? .yellow : .secondary)
         .frame(width: 12, height: 12)
-        .opacity(item.favorite || isHovering ? 1 : 0.12)
+        .opacity(item.favorite ? 1 : 0.45)
     }
     .buttonStyle(.plain)
   }
@@ -65,7 +67,7 @@ struct HistoryRowView: View {
   private var subtitle: String {
     switch item.kind {
     case .text:
-      return item.normalizedTextPreview
+      return ""
     case .image:
       return "\(item.meta.imageWidth ?? 0)x\(item.meta.imageHeight ?? 0)"
     case .file:

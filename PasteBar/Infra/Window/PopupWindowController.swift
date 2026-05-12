@@ -41,6 +41,9 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
     window.isReleasedWhenClosed = false
     window.delegate = self
     window.contentView = hostingView
+    window.standardWindowButton(.closeButton)?.isHidden = true
+    window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+    window.standardWindowButton(.zoomButton)?.isHidden = true
     return window
   }
 

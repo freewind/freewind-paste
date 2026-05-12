@@ -18,22 +18,18 @@ struct PreviewPaneView: View {
 
   @ViewBuilder
   private func content(item: ClipItem) -> some View {
-    if store.previewLocked {
-      ContentUnavailableView("Preview Locked", systemImage: "lock")
-    } else {
-      switch item.kind {
-      case .text:
-        TextPreviewView(item: item)
-      case .image:
-        VStack(alignment: .leading, spacing: 10) {
-          metaHeader(item: item)
-          ImagePreviewView(item: item, imageAssetStore: appState.imageAssetStore)
-        }
-      case .file:
-        VStack(alignment: .leading, spacing: 10) {
-          metaHeader(item: item)
-          FilePreviewView(item: item)
-        }
+    switch item.kind {
+    case .text:
+      TextPreviewView(item: item)
+    case .image:
+      VStack(alignment: .leading, spacing: 10) {
+        metaHeader(item: item)
+        ImagePreviewView(item: item, imageAssetStore: appState.imageAssetStore)
+      }
+    case .file:
+      VStack(alignment: .leading, spacing: 10) {
+        metaHeader(item: item)
+        FilePreviewView(item: item)
       }
     }
   }

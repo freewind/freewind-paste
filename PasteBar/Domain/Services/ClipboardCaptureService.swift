@@ -18,10 +18,10 @@ final class ClipboardCaptureService {
   func start(onCapture: @escaping (ClipItem) -> Void) {
     copyCommandMonitor.start()
     watcher.start {
-      guard self.copyCommandMonitor.shouldAcceptChange() else {
+      guard let item = self.parser.parse() else {
         return
       }
-      guard let item = self.parser.parse() else {
+      if item.kind == .text && !self.copyCommandMonitor.shouldAcceptChange() {
         return
       }
       onCapture(item)

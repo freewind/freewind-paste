@@ -14,6 +14,7 @@ final class AppState: ObservableObject {
   @Published var settings: AppSettings
   @Published var statusMessage: String
   @Published var isPopupVisible: Bool
+  @Published var searchFocusNonce: Int
 
   let persistence: ClipPersistence
   let imageAssetStore: ImageAssetStore
@@ -22,6 +23,7 @@ final class AppState: ObservableObject {
   let hotkeyService: HotkeyService
   let launchAtLoginService: LaunchAtLoginService
   let popupController: PopupWindowController
+  let settingsWindowController: SettingsWindowController
   let menuBarController: MenuBarController
   private var isBootstrapped = false
 
@@ -30,6 +32,7 @@ final class AppState: ObservableObject {
     hotkeyService: HotkeyService = HotkeyService(),
     launchAtLoginService: LaunchAtLoginService = LaunchAtLoginService(),
     popupController: PopupWindowController = PopupWindowController(),
+    settingsWindowController: SettingsWindowController = SettingsWindowController(),
     menuBarController: MenuBarController = MenuBarController()
   ) {
     self.persistence = persistence
@@ -40,6 +43,7 @@ final class AppState: ObservableObject {
     self.hotkeyService = hotkeyService
     self.launchAtLoginService = launchAtLoginService
     self.popupController = popupController
+    self.settingsWindowController = settingsWindowController
     self.menuBarController = menuBarController
     let loadedSettings = persistence.loadSettings()
     settings = loadedSettings
@@ -49,6 +53,7 @@ final class AppState: ObservableObject {
     )
     statusMessage = "Ready"
     isPopupVisible = false
+    searchFocusNonce = 0
   }
 
   func bootstrapIfNeeded() {
@@ -99,12 +104,13 @@ final class AppState: ObservableObject {
   }
 
   func showPopup() {
+    store.selectFirstVisible()
+    searchFocusNonce += 1
     popupController.show(with: self)
   }
 
   func openSettings() {
-    NSApp.activate(ignoringOtherApps: true)
-    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    settingsWindowController.show(with: self)
   }
 
   func promptForLabel(for id: String) {
@@ -161,5 +167,20 @@ final class AppState: ObservableObject {
     try? persistence.saveItems([])
     imageAssetStore.prune(keeping: Set<String>())
     statusMessage = "Cleared"
+  }
+
+  func requestAccessibilityPermission() {
+    _ = pasteService.trigger.requestPermissionIfNeeded()
+  }
+
+  func openAccessibilitySettings() {
+    guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
+      return
+    }
+    NSWorkspace.shared.open(url)
+  }
+
+  var accessibilityGranted: Bool {
+    AXIsProcessTrusted()
   }
 }

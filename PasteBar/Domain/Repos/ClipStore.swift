@@ -1,4 +1,5 @@
 import Combine
+import AppKit
 import Foundation
 
 @MainActor
@@ -9,6 +10,7 @@ final class ClipStore: ObservableObject {
   @Published var currentTab: MainTab
   @Published var searchQuery: String
   @Published var previewLocked: Bool
+  var selectionAnchorID: String?
 
   init(
     items: [ClipItem] = [],
@@ -24,6 +26,7 @@ final class ClipStore: ObservableObject {
     self.currentTab = currentTab
     self.searchQuery = searchQuery
     self.previewLocked = previewLocked
+    selectionAnchorID = focusedID ?? selectedIDs.first
   }
 
   var visibleItems: [ClipItem] {
@@ -81,17 +84,71 @@ final class ClipStore: ObservableObject {
     items = next
     selectedIDs = [incoming.id]
     focusedID = incoming.id
+    selectionAnchorID = incoming.id
   }
 
   func select(_ ids: Set<String>) {
     selectedIDs = ids
     if let id = visibleItems.first(where: { ids.contains($0.id) })?.id {
       focusedID = id
+      selectionAnchorID = id
     }
   }
 
   func focus(_ id: String?) {
     focusedID = id
+    if let id {
+      selectionAnchorID = id
+    }
+  }
+
+  func selectFirstVisible() {
+    guard let first = visibleItems.first else {
+      selectedIDs.removeAll()
+      focusedID = nil
+      return
+    }
+    selectedIDs = [first.id]
+    focusedID = first.id
+    selectionAnchorID = first.id
+  }
+
+  func handleClick(
+    on id: String,
+    orderedIDs: [String],
+    modifiers: NSEvent.ModifierFlags
+  ) {
+    if modifiers.contains(.shift) {
+      let anchor = selectionAnchorID ?? focusedID ?? id
+      guard
+        let start = orderedIDs.firstIndex(of: anchor),
+        let end = orderedIDs.firstIndex(of: id)
+      else {
+        selectedIDs = [id]
+        focusedID = id
+        selectionAnchorID = id
+        return
+      }
+      let range = start <= end ? start...end : end...start
+      selectedIDs = Set(orderedIDs[range])
+      focusedID = id
+      return
+    }
+
+    if modifiers.contains(.command) {
+      if selectedIDs.contains(id) {
+        selectedIDs.remove(id)
+      } else {
+        selectedIDs.insert(id)
+      }
+      focusedID = id
+      selectionAnchorID = id
+      return
+    }
+
+    selectedIDs = [id]
+    focusedID = id
+    selectionAnchorID = id
   }
 
   func moveItems(
