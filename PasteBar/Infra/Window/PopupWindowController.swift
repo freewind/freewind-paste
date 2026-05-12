@@ -88,7 +88,7 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
     window.isOpaque = false
     window.backgroundColor = .windowBackgroundColor
     window.isReleasedWhenClosed = false
-    window.minSize = NSSize(width: 960, height: 620)
+    window.minSize = NSSize(width: 700, height: 460)
     window.delegate = self
     window.isMovableByWindowBackground = true
     window.titleVisibility = .hidden

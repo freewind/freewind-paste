@@ -25,13 +25,13 @@ struct HistoryView: View {
         }
         .padding(.horizontal, 6)
         .padding(.bottom, 6)
-        .frame(minWidth: 320, idealWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minWidth: 240, idealWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
 
         PreviewPaneView()
-          .frame(minWidth: 420, idealWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
+          .frame(minWidth: 320, idealWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
       }
     }
-    .frame(minWidth: 960, minHeight: 620)
+    .frame(minWidth: 700, minHeight: 460)
     .background(PopupEventMonitorView { event in
       switch event.type {
       case .keyDown:

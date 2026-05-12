@@ -84,7 +84,7 @@ struct ImagePreviewView: View {
         }
         .frame(
           maxWidth: .infinity,
-          minHeight: compact ? nil : 280,
+          minHeight: compact ? nil : 140,
           maxHeight: compact ? 320 : .infinity
         )
       } else {
