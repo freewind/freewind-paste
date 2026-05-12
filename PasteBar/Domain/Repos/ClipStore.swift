@@ -72,23 +72,25 @@ final class ClipStore: ObservableObject {
 
     let remainingIDs = sectionIDs.filter { !movingSet.contains($0) }
     let insertIndex: Int
+    let targetNeighborID: String
 
     if offset < 0 {
       guard firstIndex > 0 else {
         return false
       }
-      let pivotID = sectionIDs[firstIndex - 1]
-      insertIndex = remainingIDs.firstIndex(of: pivotID) ?? 0
+      targetNeighborID = sectionIDs[firstIndex - 1]
+      insertIndex = remainingIDs.firstIndex(of: targetNeighborID) ?? 0
     } else {
       guard lastIndex < sectionIDs.count - 1 else {
         return false
       }
-      let pivotID = sectionIDs[lastIndex + 1]
-      insertIndex = (remainingIDs.firstIndex(of: pivotID) ?? (remainingIDs.count - 1)) + 1
+      targetNeighborID = sectionIDs[lastIndex + 1]
+      insertIndex = (remainingIDs.firstIndex(of: targetNeighborID) ?? (remainingIDs.count - 1)) + 1
     }
 
     let newVisibleOrder = Array(remainingIDs[..<insertIndex]) + movingIDs + Array(remainingIDs[insertIndex...])
     reorderItems(within: sectionIDs, newVisibleOrder: newVisibleOrder)
+    mergeMovedItemsIntoNeighborGroup(itemIDs: movingIDs, neighborID: targetNeighborID)
     return true
   }
 
@@ -114,6 +116,35 @@ final class ClipStore: ObservableObject {
     }
 
     items = result
+  }
+
+  private func mergeMovedItemsIntoNeighborGroup(itemIDs: [String], neighborID: String) {
+    guard let neighbor = item(for: neighborID) else {
+      return
+    }
+
+    let targetDate = neighbor.groupingDate
+    let targetGroup = DateGroup.title(for: targetDate)
+    let movingSet = Set(itemIDs)
+    var next = items
+    var changed = false
+
+    for index in next.indices where movingSet.contains(next[index].id) {
+      guard DateGroup.title(for: next[index].groupingDate) != targetGroup else {
+        continue
+      }
+
+      if next[index].isTrashed {
+        next[index].trashedAt = targetDate
+      } else {
+        next[index].updatedAt = targetDate
+      }
+      changed = true
+    }
+
+    if changed {
+      items = next
+    }
   }
 
   func reverseItems(_ ids: [String]) {

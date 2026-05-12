@@ -384,27 +384,14 @@ final class AppState: ObservableObject {
       return
     }
 
-    guard
-      let group = uiState.groupedVisibleItems.first(where: { group in
-        group.items.contains(where: { $0.id == focusedID })
-      })
-    else {
-      return
-    }
-
-    let groupIDs = group.items.map(\.id)
-    let movingIDs = groupIDs.filter { uiState.selectedIDs.contains($0) }
+    let visibleIDs = uiState.visibleItems.map(\.id)
+    let movingIDs = visibleIDs.filter { uiState.selectedIDs.contains($0) }
 
     guard !movingIDs.isEmpty else {
       return
     }
 
-    guard Set(movingIDs) == uiState.selectedIDs else {
-      statusMessage = "Selection must stay in one group"
-      return
-    }
-
-    if !workflowService.moveSelectionBlock(within: groupIDs, itemIDs: movingIDs, by: offset) {
+    if !workflowService.moveSelectionBlock(within: visibleIDs, itemIDs: movingIDs, by: offset) {
       return
     }
 
