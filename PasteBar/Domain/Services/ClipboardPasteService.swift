@@ -138,9 +138,35 @@ final class ClipWorkflowService {
     store.item(for: id)?.label ?? ""
   }
 
-  func capture(_ item: ClipItem) {
+  func capture(_ item: ClipItem, preserveCurrentSelection: Bool = false) {
+    let selectedKeys = Set(uiState.selectedItems.map { $0.dedupeKey() })
+    let focusedKey = uiState.focusedItem?.dedupeKey()
+    let anchorKey = uiState.selectionAnchorID.flatMap { store.item(for: $0)?.dedupeKey() }
+
     store.insertOrPromote(item)
-    uiState.select([item.id])
+
+    guard preserveCurrentSelection else {
+      uiState.select([item.id])
+      commitItems()
+      return
+    }
+
+    let visibleItems = uiState.visibleItems
+    uiState.selectedIDs = Set(
+      visibleItems
+        .filter { selectedKeys.contains($0.dedupeKey()) }
+        .map(\.id)
+    )
+
+    if let focusedKey {
+      uiState.focusedID = visibleItems.first(where: { $0.dedupeKey() == focusedKey })?.id
+    }
+
+    if let anchorKey {
+      uiState.selectionAnchorID = visibleItems.first(where: { $0.dedupeKey() == anchorKey })?.id
+    }
+
+    uiState.normalizeSelection()
     commitItems()
   }
 

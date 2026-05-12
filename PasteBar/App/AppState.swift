@@ -123,7 +123,7 @@ final class AppState: ObservableObject {
 
     captureService.start { [weak self] item in
       Task { @MainActor [weak self] in
-        self?.workflowService.capture(item)
+        self?.workflowService.capture(item, preserveCurrentSelection: self?.isPopupVisible == true)
         self?.statusMessage = "Captured \(item.kind.rawValue)"
       }
     }
