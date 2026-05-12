@@ -347,6 +347,17 @@ final class ClipStore: ObservableObject {
     items[index].updatedAt = .now
   }
 
+  func setFavorite(_ ids: Set<String>, favorite: Bool) {
+    guard !ids.isEmpty else {
+      return
+    }
+    let now = Date.now
+    for index in items.indices where ids.contains(items[index].id) {
+      items[index].favorite = favorite
+      items[index].updatedAt = now
+    }
+  }
+
   func updateLabel(for id: String, label: String) {
     guard let index = items.firstIndex(where: { $0.id == id }) else {
       return

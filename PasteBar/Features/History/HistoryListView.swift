@@ -28,24 +28,30 @@ struct HistoryListView: View {
                 appState.pasteSelection(mode: .normalEnter)
               }
               .contextMenu {
+                let targetIDs = contextTargetIDs(for: item)
+                let isMultiTarget = targetIDs.count > 1
+
                 if store.currentTab != .trash {
-                  Button(item.favorite ? "Unfavorite" : "Favorite") {
-                    store.toggleFavorite(for: item.id)
+                  Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
+                    store.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
                     appState.persistItems()
                   }
                   Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
                     appState.promptForLabel(for: item.id)
                   }
+                  .disabled(isMultiTarget)
+
                   Button("Move to Trash") {
-                    store.delete(item.id)
+                    store.delete(targetIDs, permanently: false)
                     appState.persistItems()
                   }
                 } else {
                   Button("Restore") {
-                    appState.restore(item.id)
+                    store.restore(targetIDs)
+                    appState.persistItems()
                   }
                   Button("Delete Permanently") {
-                    store.delete([item.id], permanently: true)
+                    store.delete(targetIDs, permanently: true)
                     appState.persistItems()
                   }
                 }
@@ -70,5 +76,17 @@ struct HistoryListView: View {
         store.focusedID = id
       }
     }
+  }
+
+  private func contextTargetIDs(for item: ClipItem) -> Set<String> {
+    if store.selectedIDs.count > 1, store.selectedIDs.contains(item.id) {
+      return store.selectedIDs
+    }
+    return [item.id]
+  }
+
+  private func allFavorites(in ids: Set<String>) -> Bool {
+    let targets = store.items.filter { ids.contains($0.id) }
+    return !targets.isEmpty && targets.allSatisfy(\.favorite)
   }
 }

@@ -5,6 +5,9 @@ struct TextPreviewView: View {
   @EnvironmentObject private var store: ClipStore
   let item: ClipItem
   var showsHeader: Bool = true
+  var showsMetrics: Bool = true
+  var minEditorHeight: CGFloat = 44
+  var maxEditorHeight: CGFloat = 260
 
   @State private var draftText: String = ""
   @State private var isSyncingFromItem = false
@@ -28,7 +31,9 @@ struct TextPreviewView: View {
         identity: item.id,
         language: isJSON ? "json" : nil,
         isEditable: true,
-        measuredHeight: $editorHeight
+        measuredHeight: $editorHeight,
+        minHeight: minEditorHeight,
+        maxHeight: maxEditorHeight
       )
       .id(item.id)
       .frame(maxWidth: .infinity)
@@ -40,13 +45,15 @@ struct TextPreviewView: View {
       .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
       .onDisappear { handleDisappear() }
 
-      HStack(spacing: 6) {
-        Text("\(lineCount) lines")
-        Text("·")
-        Text("\(draftText.count) chars")
+      if showsMetrics {
+        HStack(spacing: 6) {
+          Text("\(lineCount) lines")
+          Text("·")
+          Text("\(draftText.count) chars")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
       }
-      .font(.caption)
-      .foregroundStyle(.secondary)
     }
   }
 

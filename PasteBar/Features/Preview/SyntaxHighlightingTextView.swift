@@ -69,7 +69,11 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
     coordinator.lastIdentity = identity
     let selectedRange = textView.selectedRange()
     if identityChanged || textView.string != text || textView.textStorage?.length == 0 {
-      textView.textStorage?.setAttributedString(SyntaxTextHighlighter.highlight(text, language: language))
+      if let language {
+        textView.textStorage?.setAttributedString(SyntaxTextHighlighter.highlight(text, language: language))
+      } else {
+        textView.textStorage?.setAttributedString(SyntaxTextHighlighter.plain(text))
+      }
       if identityChanged {
         textView.setSelectedRange(NSRange(location: 0, length: 0))
         scrollView.contentView.scroll(to: .zero)
@@ -126,12 +130,12 @@ struct SyntaxHighlightingTextView: NSViewRepresentable {
 }
 
 enum SyntaxTextHighlighter {
+  static func plain(_ text: String) -> NSAttributedString {
+    NSAttributedString(string: text, attributes: baseAttributes())
+  }
+
   static func highlight(_ text: String, language: String?) -> NSAttributedString {
-    let baseAttributes: [NSAttributedString.Key: Any] = [
-      .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
-      .foregroundColor: NSColor.textColor,
-    ]
-    let result = NSMutableAttributedString(string: text, attributes: baseAttributes)
+    let result = NSMutableAttributedString(attributedString: plain(text))
 
     apply(pattern: #"(?m)//.*$|#.*$"#, color: .systemGreen, to: result)
     apply(pattern: #""([^"\\]|\\.)*""#, color: .systemRed, to: result)
@@ -156,6 +160,13 @@ enum SyntaxTextHighlighter {
     }
 
     return result
+  }
+
+  private static func baseAttributes() -> [NSAttributedString.Key: Any] {
+    [
+      .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular),
+      .foregroundColor: NSColor.textColor,
+    ]
   }
 
   private static func apply(

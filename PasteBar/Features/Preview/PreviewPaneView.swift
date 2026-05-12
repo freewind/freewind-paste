@@ -38,17 +38,19 @@ struct PreviewPaneView: View {
       LazyVStack(alignment: .leading, spacing: 12) {
         ForEach(Array(store.selectedItems.enumerated()), id: \.element.id) { index, item in
           VStack(alignment: .leading, spacing: 10) {
-            HStack {
-              Text(headerTitle(for: item, index: index + 1))
-                .font(.headline)
-                .lineLimit(1)
-              Spacer()
-              Text(headerSummary(for: item))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if item.kind != .text {
+              HStack {
+                Text(headerTitle(for: item, index: index + 1))
+                  .font(.headline)
+                  .lineLimit(1)
+                Spacer()
+                Text(headerSummary(for: item))
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+              }
             }
 
-            multiSelectionItemContent(item)
+            multiSelectionItemContent(item, index: index + 1)
           }
           .padding(12)
           .background(Color(NSColor.controlBackgroundColor))
@@ -81,10 +83,27 @@ struct PreviewPaneView: View {
   }
 
   @ViewBuilder
-  private func multiSelectionItemContent(_ item: ClipItem) -> some View {
+  private func multiSelectionItemContent(_ item: ClipItem, index: Int) -> some View {
     switch item.kind {
     case .text:
-      TextPreviewView(item: item, showsHeader: false)
+      VStack(alignment: .leading, spacing: 8) {
+        HStack {
+          Text("\(index).")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+          Spacer()
+          Text(headerSummary(for: item))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        TextPreviewView(
+          item: item,
+          showsHeader: false,
+          showsMetrics: false,
+          minEditorHeight: 28,
+          maxEditorHeight: 140
+        )
+      }
     case .image:
       ImagePreviewView(
         item: item,
