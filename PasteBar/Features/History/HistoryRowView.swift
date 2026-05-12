@@ -1,9 +1,17 @@
 import SwiftUI
 
 struct HistoryRowView: View {
+  enum DropLine: Equatable {
+    case none
+    case before
+    case after
+  }
+
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
   let item: ClipItem
+  var isDragged: Bool = false
+  var dropLine: DropLine = .none
   @State private var isHovering = false
 
   var body: some View {
@@ -11,8 +19,6 @@ struct HistoryRowView: View {
       checkButton
 
       favoriteButton
-
-      leadingPreview
 
       VStack(alignment: .leading, spacing: 2) {
         HStack(spacing: 6) {
@@ -39,41 +45,21 @@ struct HistoryRowView: View {
         }
       }
     }
-    .padding(.vertical, 0)
-    .onHover { isHovering = $0 }
-  }
-
-  @ViewBuilder
-  private var leadingPreview: some View {
-    switch item.kind {
-    case .image:
-      if
-        let path = item.content.imageAssetPath,
-        let image = appState.imageAssetStore.load(relativePath: path)
-      {
-        Image(nsImage: image)
-          .resizable()
-          .scaledToFill()
-          .frame(width: 22, height: 22)
-          .clipped()
-          .clipShape(RoundedRectangle(cornerRadius: 4))
-      } else {
-        Image(systemName: "photo")
-          .font(.system(size: 10))
-          .frame(width: 22, height: 22)
-          .foregroundStyle(.secondary)
+    .padding(.horizontal, 8)
+    .padding(.vertical, 6)
+    .background(rowBackground)
+    .overlay(alignment: .topLeading) {
+      if dropLine == .before {
+        dropIndicator
       }
-    case .text:
-      Image(systemName: "text.alignleft")
-        .font(.system(size: 10))
-        .frame(width: 12, height: 12)
-        .foregroundStyle(.secondary)
-    case .file:
-      Image(systemName: "doc")
-        .font(.system(size: 10))
-        .frame(width: 12, height: 12)
-        .foregroundStyle(.secondary)
     }
+    .overlay(alignment: .bottomLeading) {
+      if dropLine == .after {
+        dropIndicator
+      }
+    }
+    .opacity(isDragged ? 0.55 : 1)
+    .onHover { isHovering = $0 }
   }
 
   @ViewBuilder
@@ -110,6 +96,40 @@ struct HistoryRowView: View {
 
   private var contentTitle: String {
     return item.titleText
+  }
+
+  @ViewBuilder
+  private var rowBackground: some View {
+    RoundedRectangle(cornerRadius: 8)
+      .fill(backgroundColor)
+  }
+
+  @ViewBuilder
+  private var dropIndicator: some View {
+    RoundedRectangle(cornerRadius: 999)
+      .fill(Color.accentColor)
+      .frame(height: 2)
+      .padding(.horizontal, 2)
+  }
+
+  private var backgroundColor: Color {
+    if isDragged {
+      return Color.accentColor.opacity(0.10)
+    }
+
+    if uiState.focusedID == item.id {
+      return Color.accentColor.opacity(0.16)
+    }
+
+    if uiState.selectedIDs.contains(item.id) {
+      return Color.accentColor.opacity(0.10)
+    }
+
+    if isHovering {
+      return Color.secondary.opacity(0.06)
+    }
+
+    return .clear
   }
 
   private var subtitle: String {

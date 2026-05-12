@@ -6,15 +6,21 @@ struct HistoryListView: View {
   @EnvironmentObject private var uiState: ClipViewState
   @EnvironmentObject private var store: ClipStore
   @State private var draggedItemID: String?
+  @State private var dropTarget: HistoryDropTarget?
 
   var body: some View {
     List(selection: $uiState.selectedIDs) {
       ForEach(uiState.groupedVisibleItems) { group in
         Section(group.title) {
           ForEach(group.items) { item in
-            HistoryRowView(item: item)
+            HistoryRowView(
+              item: item,
+              isDragged: draggedItemID == item.id,
+              dropLine: dropLine(for: item.id)
+            )
               .tag(item.id)
               .contentShape(Rectangle())
+              .listRowBackground(Color.clear)
               .onTapGesture {
                 uiState.handleClick(
                   on: item.id,
@@ -56,7 +62,11 @@ struct HistoryListView: View {
                 }
               }
               .onDrag {
+                if !uiState.selectedIDs.contains(item.id) {
+                  uiState.select([item.id])
+                }
                 draggedItemID = item.id
+                dropTarget = nil
                 return NSItemProvider(object: item.id as NSString)
               }
               .onDrop(
@@ -65,6 +75,7 @@ struct HistoryListView: View {
                   targetItemID: item.id,
                   groupItemIDs: group.items.map(\.id),
                   draggedItemID: $draggedItemID,
+                  dropTarget: $dropTarget,
                   onMove: { offsets, destination in
                     appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
                   }
@@ -77,11 +88,35 @@ struct HistoryListView: View {
     .listStyle(.sidebar)
     .controlSize(.small)
     .environment(\.defaultMinListRowHeight, 26)
+    .background(
+      DragEndMonitorView {
+        guard draggedItemID != nil || dropTarget != nil else {
+          return
+        }
+        draggedItemID = nil
+        dropTarget = nil
+      }
+    )
     .onChange(of: uiState.selectedIDs) { _, newValue in
-      if let id = newValue.first {
+      guard draggedItemID == nil else {
+        return
+      }
+
+      if let focusedID = uiState.focusedID, newValue.contains(focusedID) {
+        return
+      }
+
+      if let id = uiState.visibleItems.first(where: { newValue.contains($0.id) })?.id {
         uiState.focus(id)
       }
     }
+  }
+
+  private func dropLine(for itemID: String) -> HistoryRowView.DropLine {
+    guard let dropTarget, dropTarget.itemID == itemID else {
+      return .none
+    }
+    return dropTarget.isAfter ? .after : .before
   }
 
   private func contextTargetIDs(for item: ClipItem) -> Set<String> {
@@ -97,36 +132,134 @@ struct HistoryListView: View {
   }
 }
 
+private struct DragEndMonitorView: NSViewRepresentable {
+  let onMouseUp: () -> Void
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator()
+  }
+
+  func makeNSView(context: Context) -> NSView {
+    let view = NSView(frame: .zero)
+    context.coordinator.start(onMouseUp: onMouseUp)
+    return view
+  }
+
+  func updateNSView(_ nsView: NSView, context: Context) {
+    context.coordinator.onMouseUp = onMouseUp
+  }
+
+  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+    coordinator.stop()
+  }
+
+  final class Coordinator {
+    var monitor: Any?
+    var onMouseUp: (() -> Void)?
+
+    func start(onMouseUp: @escaping () -> Void) {
+      self.onMouseUp = onMouseUp
+      stop()
+      monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
+        self?.onMouseUp?()
+        return event
+      }
+    }
+
+    func stop() {
+      if let monitor {
+        NSEvent.removeMonitor(monitor)
+        self.monitor = nil
+      }
+    }
+  }
+}
+
+private struct HistoryDropTarget: Equatable {
+  let itemID: String
+  let isAfter: Bool
+}
+
 private struct HistoryRowDropDelegate: DropDelegate {
   let targetItemID: String
   let groupItemIDs: [String]
   @Binding var draggedItemID: String?
+  @Binding var dropTarget: HistoryDropTarget?
   let onMove: (IndexSet, Int) -> Void
 
   func dropEntered(info: DropInfo) {
+    updateDropTarget(info: info)
+  }
+
+  func dropExited(info: DropInfo) {
+    guard dropTarget?.itemID == targetItemID else {
+      return
+    }
+    dropTarget = nil
+  }
+
+  func performDrop(info: DropInfo) -> Bool {
     guard
       let draggedItemID,
       draggedItemID != targetItemID,
       let from = groupItemIDs.firstIndex(of: draggedItemID),
+      let dropTarget,
+      dropTarget.itemID == targetItemID,
       let to = groupItemIDs.firstIndex(of: targetItemID)
     else {
-      return
+      self.draggedItemID = nil
+      self.dropTarget = nil
+      return false
     }
 
-    let destination = to > from ? to + 1 : to
-    onMove(IndexSet(integer: from), destination)
-  }
+    if isNoopMove(from: from, to: to, isAfter: dropTarget.isAfter) {
+      self.draggedItemID = nil
+      self.dropTarget = nil
+      return true
+    }
 
-  func performDrop(info: DropInfo) -> Bool {
-    draggedItemID = nil
+    let destination = dropTarget.isAfter ? to + 1 : to
+    onMove(IndexSet(integer: from), destination)
+    self.draggedItemID = nil
+    self.dropTarget = nil
     return true
   }
 
   func dropUpdated(info: DropInfo) -> DropProposal? {
-    DropProposal(operation: .move)
+    updateDropTarget(info: info)
+    return DropProposal(operation: .move)
   }
 
   func validateDrop(info: DropInfo) -> Bool {
-    draggedItemID != nil
+    guard let draggedItemID else {
+      return false
+    }
+
+    return draggedItemID != targetItemID
+  }
+
+  private func updateDropTarget(info: DropInfo) {
+    guard
+      let draggedItemID,
+      draggedItemID != targetItemID
+    else {
+      return
+    }
+
+    let isAfter = info.location.y > 13
+    dropTarget = HistoryDropTarget(itemID: targetItemID, isAfter: isAfter)
+  }
+
+  private func isNoopMove(from: Int, to: Int, isAfter: Bool) -> Bool {
+    if from == to {
+      return true
+    }
+    if isAfter, from == to + 1 {
+      return true
+    }
+    if !isAfter, from + 1 == to {
+      return true
+    }
+    return false
   }
 }
