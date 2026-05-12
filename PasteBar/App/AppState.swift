@@ -396,7 +396,27 @@ final class AppState: ObservableObject {
 
   private func popupShortcutAction(for event: NSEvent) -> PopupShortcutAction? {
     PopupShortcutAction.allCases.first { action in
-      settings.popupHotkeys.hotkey(for: action).matches(event)
+      let hotkey = settings.popupHotkeys.hotkey(for: action)
+      if hotkey.matches(event) {
+        return true
+      }
+
+      guard action == .paste || action == .nativePaste else {
+        return false
+      }
+
+      let alternativeKeyCode: UInt32
+      switch hotkey.keyCode {
+      case 36:
+        alternativeKeyCode = 76
+      case 76:
+        alternativeKeyCode = 36
+      default:
+        return false
+      }
+
+      return alternativeKeyCode == UInt32(event.keyCode)
+        && hotkey.modifiers == AppHotkey.carbonFlags(for: event.modifierFlags)
     }
   }
 
