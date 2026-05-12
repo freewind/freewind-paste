@@ -26,7 +26,7 @@ struct PreviewPaneView: View {
       if showsToolbar {
         HStack(spacing: 10) {
           if uiState.selectedItems.count > 1 {
-            Picker("Preview Mode", selection: $multiSelectionMode) {
+            Picker("", selection: $multiSelectionMode) {
               ForEach(MultiSelectionPreviewMode.allCases, id: \.self) { mode in
                 Text(mode.title).tag(mode)
               }
@@ -167,15 +167,15 @@ struct PreviewPaneView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        TextPreviewView(
-          item: item,
-          showsHeader: false,
-          showsMetrics: false,
-          minEditorHeight: 28,
-          maxEditorHeight: 140,
-          expandsToFill: false,
-          allowsScrolling: false
-        )
+        Text(multiSelectionText(for: item))
+          .font(.system(size: 14, design: .monospaced))
+          .textSelection(.enabled)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.horizontal, 14)
+          .padding(.vertical, 12)
+          .background(Color(NSColor.textBackgroundColor))
+          .clipShape(RoundedRectangle(cornerRadius: 8))
+          .fixedSize(horizontal: false, vertical: true)
       }
     case .image:
       ImagePreviewView(
@@ -207,6 +207,11 @@ struct PreviewPaneView: View {
         return "\(item.id)|\(updateToken)"
       }
       .joined(separator: "\u{1F}")
+  }
+
+  private func multiSelectionText(for item: ClipItem) -> String {
+    let text = item.content.text ?? ""
+    return text.isEmpty ? " " : text
   }
 
   private func metaHeader(item: ClipItem) -> some View {

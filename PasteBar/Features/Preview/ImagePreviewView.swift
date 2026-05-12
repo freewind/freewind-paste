@@ -59,20 +59,28 @@ struct ImagePreviewView: View {
           }
         }
 
-        Image(nsImage: image)
-          .resizable()
-          .scaledToFit()
-          .frame(
-            maxWidth: .infinity,
-            minHeight: compact ? nil : 280,
-            maxHeight: compact ? 320 : .infinity
-          )
-          .background(Color.black.opacity(0.03))
+        GeometryReader { proxy in
+          let fittedSize = fittedImageSize(for: image.size, in: proxy.size)
+
+          ZStack(alignment: .topLeading) {
+            Color.black.opacity(0.03)
+
+            Image(nsImage: image)
+              .resizable()
+              .scaledToFit()
+              .frame(width: fittedSize.width, height: fittedSize.height, alignment: .topLeading)
+          }
           .clipShape(RoundedRectangle(cornerRadius: 10))
           .contentShape(Rectangle())
           .onTapGesture {
             appState.previewImage(item)
           }
+        }
+        .frame(
+          maxWidth: .infinity,
+          minHeight: compact ? nil : 280,
+          maxHeight: compact ? 320 : .infinity
+        )
       } else {
         ContentUnavailableView("Image Missing", systemImage: "photo")
       }
@@ -138,5 +146,25 @@ struct ImagePreviewView: View {
 
   private func byteText(for bytes: Int64) -> String {
     ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+  }
+
+  private func fittedImageSize(for imageSize: CGSize, in containerSize: CGSize) -> CGSize {
+    guard
+      imageSize.width > 0,
+      imageSize.height > 0,
+      containerSize.width > 0,
+      containerSize.height > 0
+    else {
+      return imageSize
+    }
+
+    let widthScale = containerSize.width / imageSize.width
+    let heightScale = containerSize.height / imageSize.height
+    let scale = min(widthScale, heightScale, 1)
+
+    return CGSize(
+      width: imageSize.width * scale,
+      height: imageSize.height * scale
+    )
   }
 }

@@ -255,7 +255,10 @@ final class ClipWorkflowService {
         mode: .lowResolution,
         maxDimension: imageMaxDimension
       ),
-      let saved = try? repository.imageAssetStore.save(image)
+      let saved = try? repository.imageAssetStore.save(
+        image,
+        format: repository.imageAssetStore.preferredFormat(for: image, mode: .lowResolution)
+      )
     else {
       return false
     }

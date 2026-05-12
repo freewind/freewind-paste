@@ -2,6 +2,21 @@ import AppKit
 import Foundation
 
 final class ImageAssetStore {
+  enum ImageFileFormat {
+    case png
+    case jpeg
+
+    var fileExtension: String {
+      switch self {
+      case .png:
+        return "png"
+      case .jpeg:
+        return "jpg"
+      }
+    }
+  }
+
+  private let lowResolutionJPEGCompressionFactor: CGFloat = 0.72
   let assetsDirectoryURL: URL
 
   init(assetsDirectoryURL: URL) {
@@ -13,24 +28,28 @@ final class ImageAssetStore {
     )
   }
 
-  func save(_ image: NSImage, id: String = UUID().uuidString) throws -> (relativePath: String, hash: String, width: Int, height: Int, byteSize: Int64) {
+  func save(
+    _ image: NSImage,
+    id: String = UUID().uuidString,
+    format: ImageFileFormat = .png
+  ) throws -> (relativePath: String, hash: String, width: Int, height: Int, byteSize: Int64) {
     guard
       let rep = bitmap(for: image),
-      let png = rep.representation(using: .png, properties: [:])
+      let data = encodedData(for: rep, format: format)
     else {
       throw NSError(domain: "PasteBar.ImageAssetStore", code: 1)
     }
 
-    let hash = FileHash.sha256(data: png)
-    let fileName = "\(id).png"
+    let hash = FileHash.sha256(data: data)
+    let fileName = "\(id).\(format.fileExtension)"
     let fileURL = assetsDirectoryURL.appendingPathComponent(fileName)
-    try png.write(to: fileURL, options: .atomic)
+    try data.write(to: fileURL, options: .atomic)
     return (
       relativePath: "images/\(fileName)",
       hash: hash,
       width: Int(rep.pixelsWide),
       height: Int(rep.pixelsHigh),
-      byteSize: Int64(png.count)
+      byteSize: Int64(data.count)
     )
   }
 
@@ -50,7 +69,14 @@ final class ImageAssetStore {
     guard mode == .lowResolution else {
       return image
     }
-    return resized(image: image, maxDimension: maxDimension) ?? image
+
+    let resizedImage = resized(image: image, maxDimension: maxDimension) ?? image
+    guard preferredFormat(for: resizedImage, mode: mode) == .jpeg else {
+      return resizedImage
+    }
+
+    return recompressedJPEG(image: resizedImage, compressionFactor: lowResolutionJPEGCompressionFactor)
+      ?? resizedImage
   }
 
   func outputSize(for width: Int, height: Int, mode: ImageOutputMode, maxDimension: Double) -> (width: Int, height: Int) {
@@ -80,10 +106,22 @@ final class ImageAssetStore {
       return nil
     }
     let rendered = transformed(image: image, mode: mode, maxDimension: maxDimension)
-    guard let data = pngData(for: rendered) else {
+    guard let data = encodedData(for: rendered, format: preferredFormat(for: rendered, mode: mode)) else {
       return nil
     }
     return Int64(data.count)
+  }
+
+  func preferredFormat(for image: NSImage, mode: ImageOutputMode) -> ImageFileFormat {
+    guard mode == .lowResolution else {
+      return .png
+    }
+
+    guard let rep = bitmap(for: image), !rep.hasAlpha else {
+      return .png
+    }
+
+    return .jpeg
   }
 
   func remove(relativePath: String) {
@@ -117,14 +155,39 @@ final class ImageAssetStore {
     return NSBitmapImageRep(data: tiff)
   }
 
-  private func pngData(for image: NSImage) -> Data? {
+  private func encodedData(for image: NSImage, format: ImageFileFormat) -> Data? {
     guard
-      let rep = bitmap(for: image),
-      let png = rep.representation(using: .png, properties: [:])
+      let rep = bitmap(for: image)
     else {
       return nil
     }
-    return png
+    return encodedData(for: rep, format: format)
+  }
+
+  private func encodedData(for rep: NSBitmapImageRep, format: ImageFileFormat) -> Data? {
+    switch format {
+    case .png:
+      return rep.representation(using: .png, properties: [:])
+    case .jpeg:
+      return rep.representation(
+        using: .jpeg,
+        properties: [.compressionFactor: lowResolutionJPEGCompressionFactor]
+      )
+    }
+  }
+
+  private func recompressedJPEG(image: NSImage, compressionFactor: CGFloat) -> NSImage? {
+    guard
+      let rep = bitmap(for: image),
+      let data = rep.representation(
+        using: .jpeg,
+        properties: [.compressionFactor: compressionFactor]
+      )
+    else {
+      return nil
+    }
+
+    return NSImage(data: data)
   }
 
   private func resized(image: NSImage, maxDimension: Double) -> NSImage? {
