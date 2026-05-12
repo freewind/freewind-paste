@@ -50,7 +50,7 @@ struct HistoryRowView: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .contentShape(Rectangle())
-    .padding(.horizontal, 8)
+    .padding(.horizontal, 12)
     .padding(.vertical, 2)
     .background(rowBackground)
     .overlay(alignment: .topLeading) {

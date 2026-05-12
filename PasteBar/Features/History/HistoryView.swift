@@ -18,12 +18,12 @@ struct HistoryView: View {
             Text("Trash").tag(MainTab.trash)
           }
           .pickerStyle(.segmented)
+          .padding(.horizontal, 6)
 
           HistoryListView()
 
           sidebarFooter
         }
-        .padding(.horizontal, 6)
         .padding(.bottom, 6)
         .frame(minWidth: 240, idealWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
 
@@ -136,6 +136,7 @@ struct HistoryView: View {
     }
     .buttonStyle(.borderless)
     .font(.caption)
+    .padding(.horizontal, 6)
     .padding(.top, 4)
   }
 }
