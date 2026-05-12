@@ -21,21 +21,21 @@ struct HistoryListView: View {
               .tag(item.id)
               .contentShape(Rectangle())
               .listRowBackground(Color.clear)
-              .onTapGesture {
-                uiState.handleClick(
-                  on: item.id,
-                  orderedIDs: uiState.visibleItems.map(\.id),
-                  modifiers: NSEvent.modifierFlags
-                )
-              }
-              .onTapGesture(count: 2) {
+              .highPriorityGesture(TapGesture(count: 2).onEnded {
                 uiState.handleClick(
                   on: item.id,
                   orderedIDs: uiState.visibleItems.map(\.id),
                   modifiers: []
                 )
                 appState.pasteSelection(mode: .normalEnter)
-              }
+              })
+              .simultaneousGesture(TapGesture().onEnded {
+                uiState.handleClick(
+                  on: item.id,
+                  orderedIDs: uiState.visibleItems.map(\.id),
+                  modifiers: NSEvent.modifierFlags
+                )
+              })
               .contextMenu {
                 let targetIDs = contextTargetIDs(for: item)
                 let isMultiTarget = targetIDs.count > 1
