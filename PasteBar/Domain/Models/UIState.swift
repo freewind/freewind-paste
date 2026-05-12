@@ -16,7 +16,7 @@ enum ClipKindFilter: String, CaseIterable {
   var title: String {
     switch self {
     case .all:
-      return "All"
+      return ""
     case .text:
       return "Text"
     case .image:

@@ -57,13 +57,25 @@ struct HistoryView: View {
     HStack(spacing: 10) {
       SearchBarView()
 
-      Picker("Type", selection: $uiState.kindFilter) {
-        ForEach(ClipKindFilter.allCases, id: \.self) { filter in
-          Text(filter.title).tag(filter)
+      HStack(spacing: 6) {
+        Picker("Type", selection: $uiState.kindFilter) {
+          ForEach(ClipKindFilter.allCases, id: \.self) { filter in
+            Text(filter.title).tag(filter)
+          }
+        }
+        .pickerStyle(.menu)
+        .frame(width: 120)
+
+        if uiState.kindFilter != .all {
+          Button {
+            uiState.kindFilter = .all
+          } label: {
+            Image(systemName: "xmark.circle.fill")
+              .foregroundStyle(.secondary)
+          }
+          .buttonStyle(.plain)
         }
       }
-      .pickerStyle(.menu)
-      .frame(width: 120)
     }
     .padding(.horizontal, 12)
     .padding(.top, 10)
