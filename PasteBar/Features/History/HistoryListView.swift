@@ -14,37 +14,36 @@ struct HistoryListView: View {
         ForEach(uiState.groupedVisibleItems) { group in
           Section(group.title) {
             ForEach(group.items) { item in
-              HistoryRowView(
-                item: item,
-                isDragActive: draggedItemID != nil,
-                isDragged: draggedItemID == item.id,
-                dropLine: dropLine(for: item.id)
+              NativeClickableRow(
+                content: AnyView(
+                  HistoryRowView(
+                    item: item,
+                    isDragActive: draggedItemID != nil,
+                    isDragged: draggedItemID == item.id,
+                    dropLine: dropLine(for: item.id)
+                  )
+                ),
+                onClick: { event in
+                  uiState.handleClick(
+                    on: item.id,
+                    orderedIDs: uiState.visibleItems.map(\.id),
+                    modifiers: event.modifierFlags
+                  )
+                },
+                onDoubleClick: {
+                  if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+                    uiState.handleClick(
+                      on: item.id,
+                      orderedIDs: uiState.visibleItems.map(\.id),
+                      modifiers: []
+                    )
+                  }
+                  appState.pasteSelection(mode: .normalEnter)
+                }
               )
                 .tag(item.id)
                 .contentShape(Rectangle())
                 .listRowBackground(Color.clear)
-                .gesture(
-                  ExclusiveGesture(TapGesture(count: 2), TapGesture())
-                    .onEnded { gesture in
-                      switch gesture {
-                      case .first:
-                        if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
-                          uiState.handleClick(
-                            on: item.id,
-                            orderedIDs: uiState.visibleItems.map(\.id),
-                            modifiers: []
-                          )
-                        }
-                        appState.pasteSelection(mode: .normalEnter)
-                      case .second:
-                        uiState.handleClick(
-                          on: item.id,
-                          orderedIDs: uiState.visibleItems.map(\.id),
-                          modifiers: NSEvent.modifierFlags
-                        )
-                      }
-                    }
-                )
                 .contextMenu {
                   let targetIDs = contextTargetIDs(for: item)
                   let isMultiTarget = targetIDs.count > 1
@@ -189,6 +188,68 @@ struct HistoryListView: View {
   private func allFavorites(in ids: Set<String>) -> Bool {
     let targets = store.items.filter { ids.contains($0.id) }
     return !targets.isEmpty && targets.allSatisfy(\.favorite)
+  }
+}
+
+private struct NativeClickableRow: NSViewRepresentable {
+  let content: AnyView
+  let onClick: (NSEvent) -> Void
+  let onDoubleClick: () -> Void
+
+  func makeNSView(context: Context) -> NativeClickableHostingView {
+    let view = NativeClickableHostingView(rootView: content)
+    view.onClick = onClick
+    view.onDoubleClick = onDoubleClick
+    return view
+  }
+
+  func updateNSView(_ nsView: NativeClickableHostingView, context: Context) {
+    nsView.rootView = content
+    nsView.onClick = onClick
+    nsView.onDoubleClick = onDoubleClick
+  }
+}
+
+private final class NativeClickableHostingView: NSHostingView<AnyView> {
+  var onClick: ((NSEvent) -> Void)?
+  var onDoubleClick: (() -> Void)?
+
+  override func mouseDown(with event: NSEvent) {
+    if shouldIgnoreRowClick(for: event) {
+      super.mouseDown(with: event)
+      return
+    }
+
+    onClick?(event)
+    super.mouseDown(with: event)
+
+    if event.clickCount == 2 {
+      onDoubleClick?()
+    }
+  }
+
+  private func shouldIgnoreRowClick(for event: NSEvent) -> Bool {
+    let point = convert(event.locationInWindow, from: nil)
+    guard let hitView = hitTest(point) else {
+      return false
+    }
+
+    return hitView.hasAncestor(before: self) { view in
+      view is NSButton || view is NSControl
+    }
+  }
+}
+
+private extension NSView {
+  func hasAncestor(before ancestor: NSView, matching: (NSView) -> Bool) -> Bool {
+    var current: NSView? = self
+    while let view = current, view !== ancestor {
+      if matching(view) {
+        return true
+      }
+      current = view.superview
+    }
+    return false
   }
 }
 
