@@ -49,6 +49,12 @@ struct HistoryListView: View {
                   let isMultiTarget = targetIDs.count > 1
 
                   if uiState.currentTab != .trash {
+                    Button("Paste") {
+                      appState.paste(targetIDs, mode: .normalEnter)
+                    }
+
+                    Divider()
+
                     Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
                       appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
                     }

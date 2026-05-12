@@ -179,10 +179,26 @@ final class AppState: ObservableObject {
       imageMaxDimension: imageLowResMaxDimension,
       targetApplication: pasteTargetApp
     ) {
-      statusMessage = message
-      if message.hasPrefix("Pasted") || message.hasPrefix("Native pasted") {
-        hidePopup()
-      }
+      handlePasteResult(message)
+    }
+  }
+
+  func paste(_ ids: Set<String>, mode: PasteMode) {
+    if let message = workflowService.paste(
+      ids: ids,
+      mode: mode,
+      imageOutputMode: imageOutputMode,
+      imageMaxDimension: imageLowResMaxDimension,
+      targetApplication: pasteTargetApp
+    ) {
+      handlePasteResult(message)
+    }
+  }
+
+  private func handlePasteResult(_ message: String) {
+    statusMessage = message
+    if message.hasPrefix("Pasted") || message.hasPrefix("Native pasted") {
+      hidePopup()
     }
   }
 

@@ -179,6 +179,39 @@ final class ClipWorkflowService {
     let items = uiState.selectedItems.isEmpty
       ? [uiState.focusedItem].compactMap { $0 }
       : uiState.selectedItems
+    return paste(
+      items: items,
+      mode: mode,
+      imageOutputMode: imageOutputMode,
+      imageMaxDimension: imageMaxDimension,
+      targetApplication: targetApplication
+    )
+  }
+
+  func paste(
+    ids: Set<String>,
+    mode: PasteMode,
+    imageOutputMode: ImageOutputMode,
+    imageMaxDimension: Double,
+    targetApplication: NSRunningApplication?
+  ) -> String? {
+    let items = uiState.visibleItems.filter { ids.contains($0.id) }
+    return paste(
+      items: items,
+      mode: mode,
+      imageOutputMode: imageOutputMode,
+      imageMaxDimension: imageMaxDimension,
+      targetApplication: targetApplication
+    )
+  }
+
+  private func paste(
+    items: [ClipItem],
+    mode: PasteMode,
+    imageOutputMode: ImageOutputMode,
+    imageMaxDimension: Double,
+    targetApplication: NSRunningApplication?
+  ) -> String? {
     let activeItems = items.filter { !$0.isTrashed }
     guard !activeItems.isEmpty else {
       return "Trash items can't paste"
