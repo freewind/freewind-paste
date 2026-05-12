@@ -9,115 +9,167 @@ struct HistoryListView: View {
   @State private var dropTarget: HistoryDropTarget?
 
   var body: some View {
-    List {
-      ForEach(uiState.groupedVisibleItems) { group in
-        Section(group.title) {
-          ForEach(group.items) { item in
-            HistoryRowView(
-              item: item,
-              isDragActive: draggedItemID != nil,
-              isDragged: draggedItemID == item.id,
-              dropLine: dropLine(for: item.id)
-            )
-              .tag(item.id)
-              .contentShape(Rectangle())
-              .listRowBackground(Color.clear)
-              .gesture(
-                ExclusiveGesture(TapGesture(count: 2), TapGesture())
-                  .onEnded { gesture in
-                    switch gesture {
-                    case .first:
-                      if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+    ScrollViewReader { proxy in
+      List {
+        ForEach(uiState.groupedVisibleItems) { group in
+          Section(group.title) {
+            ForEach(group.items) { item in
+              HistoryRowView(
+                item: item,
+                isDragActive: draggedItemID != nil,
+                isDragged: draggedItemID == item.id,
+                dropLine: dropLine(for: item.id)
+              )
+                .tag(item.id)
+                .contentShape(Rectangle())
+                .listRowBackground(Color.clear)
+                .gesture(
+                  ExclusiveGesture(TapGesture(count: 2), TapGesture())
+                    .onEnded { gesture in
+                      switch gesture {
+                      case .first:
+                        if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+                          uiState.handleClick(
+                            on: item.id,
+                            orderedIDs: uiState.visibleItems.map(\.id),
+                            modifiers: []
+                          )
+                        }
+                        appState.pasteSelection(mode: .normalEnter)
+                      case .second:
                         uiState.handleClick(
                           on: item.id,
                           orderedIDs: uiState.visibleItems.map(\.id),
-                          modifiers: []
+                          modifiers: NSEvent.modifierFlags
                         )
                       }
-                      appState.pasteSelection(mode: .normalEnter)
-                    case .second:
-                      uiState.handleClick(
-                        on: item.id,
-                        orderedIDs: uiState.visibleItems.map(\.id),
-                        modifiers: NSEvent.modifierFlags
-                      )
+                    }
+                )
+                .contextMenu {
+                  let targetIDs = contextTargetIDs(for: item)
+                  let isMultiTarget = targetIDs.count > 1
+
+                  if uiState.currentTab != .trash {
+                    Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
+                      appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
+                    }
+                    Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
+                      appState.promptForLabel(for: item.id)
+                    }
+                    .disabled(isMultiTarget)
+
+                    Button("Move to Trash") {
+                      appState.workflowService.delete(targetIDs, permanently: false)
+                    }
+                  } else {
+                    Button("Restore") {
+                      appState.workflowService.restore(targetIDs)
+                    }
+                    Button("Delete Permanently") {
+                      appState.workflowService.delete(targetIDs, permanently: true)
                     }
                   }
-              )
-              .contextMenu {
-                let targetIDs = contextTargetIDs(for: item)
-                let isMultiTarget = targetIDs.count > 1
-
-                if uiState.currentTab != .trash {
-                  Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
-                    appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
-                  }
-                  Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
-                    appState.promptForLabel(for: item.id)
-                  }
-                  .disabled(isMultiTarget)
-
-                  Button("Move to Trash") {
-                    appState.workflowService.delete(targetIDs, permanently: false)
-                  }
-                } else {
-                  Button("Restore") {
-                    appState.workflowService.restore(targetIDs)
-                  }
-                  Button("Delete Permanently") {
-                    appState.workflowService.delete(targetIDs, permanently: true)
-                  }
                 }
-              }
-              .onDrag {
-                if !uiState.selectedIDs.contains(item.id) {
-                  uiState.select([item.id])
-                }
-                draggedItemID = item.id
-                dropTarget = nil
-                return NSItemProvider(object: item.id as NSString)
-              }
-              .onDrop(
-                of: [UTType.text],
-                delegate: HistoryRowDropDelegate(
-                  targetItemID: item.id,
-                  groupItemIDs: group.items.map(\.id),
-                  draggedItemID: $draggedItemID,
-                  dropTarget: $dropTarget,
-                  onMove: { offsets, destination in
-                    appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
+                .onDrag {
+                  if !uiState.selectedIDs.contains(item.id) {
+                    uiState.select([item.id])
                   }
+                  draggedItemID = item.id
+                  dropTarget = nil
+                  return NSItemProvider(object: item.id as NSString)
+                }
+                .onDrop(
+                  of: [UTType.text],
+                  delegate: HistoryRowDropDelegate(
+                    targetItemID: item.id,
+                    groupItemIDs: group.items.map(\.id),
+                    draggedItemID: $draggedItemID,
+                    dropTarget: $dropTarget,
+                    onMove: { offsets, destination in
+                      appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
+                    }
+                  )
                 )
-              )
+            }
           }
         }
       }
-    }
-    .listStyle(.sidebar)
-    .controlSize(.small)
-    .environment(\.defaultMinListRowHeight, 26)
-    .background(
-      DragEndMonitorView {
-        guard draggedItemID != nil || dropTarget != nil else {
+      .listStyle(.sidebar)
+      .controlSize(.small)
+      .environment(\.defaultMinListRowHeight, 26)
+      .background(
+        DragEndMonitorView {
+          guard draggedItemID != nil || dropTarget != nil else {
+            return
+          }
+          draggedItemID = nil
+          dropTarget = nil
+        }
+      )
+      .onAppear {
+        scrollToFocusedItem(with: proxy, animated: false)
+      }
+      .onChange(of: uiState.selectedIDs) { _, newValue in
+        guard draggedItemID == nil else {
           return
         }
-        draggedItemID = nil
-        dropTarget = nil
-      }
-    )
-    .onChange(of: uiState.selectedIDs) { _, newValue in
-      guard draggedItemID == nil else {
-        return
-      }
 
-      if let focusedID = uiState.focusedID, newValue.contains(focusedID) {
-        return
-      }
+        if let focusedID = uiState.focusedID, newValue.contains(focusedID) {
+          return
+        }
 
-      if let id = uiState.visibleItems.first(where: { newValue.contains($0.id) })?.id {
-        uiState.focus(id)
+        if let id = uiState.visibleItems.first(where: { newValue.contains($0.id) })?.id {
+          uiState.focus(id)
+        }
+      }
+      .onChange(of: uiState.focusedID) { _, _ in
+        guard draggedItemID == nil else {
+          return
+        }
+        scrollToFocusedItem(with: proxy)
       }
     }
+  }
+
+  private func scrollToFocusedItem(
+    with proxy: ScrollViewProxy,
+    animated: Bool = true
+  ) {
+    guard let focusedID = uiState.focusedID else {
+      return
+    }
+
+    let anchor = scrollAnchor(for: focusedID)
+    DispatchQueue.main.async {
+      if animated {
+        withAnimation {
+          proxy.scrollTo(focusedID, anchor: anchor)
+        }
+      } else {
+        proxy.scrollTo(focusedID, anchor: anchor)
+      }
+    }
+  }
+
+  private func scrollAnchor(for itemID: String) -> UnitPoint? {
+    if let firstID = uiState.visibleItems.first?.id, itemID == firstID {
+      return .top
+    }
+
+    if let lastID = uiState.visibleItems.last?.id, itemID == lastID {
+      return .bottom
+    }
+
+    let todayItems = uiState.groupedVisibleItems.first(where: { $0.title == "Today" })?.items ?? []
+    if let firstID = todayItems.first?.id, itemID == firstID {
+      return .top
+    }
+
+    if let lastID = todayItems.last?.id, itemID == lastID {
+      return .bottom
+    }
+
+    return nil
   }
 
   private func dropLine(for itemID: String) -> HistoryRowView.DropLine {
