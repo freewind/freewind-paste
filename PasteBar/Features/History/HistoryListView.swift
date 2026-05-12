@@ -43,6 +43,7 @@ struct HistoryListView: View {
               )
                 .tag(item.id)
                 .contentShape(Rectangle())
+                .listRowInsets(.init())
                 .listRowBackground(Color.clear)
                 .contextMenu {
                   let targetIDs = contextTargetIDs(for: item)
