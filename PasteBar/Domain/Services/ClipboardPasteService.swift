@@ -100,3 +100,165 @@ struct ClipboardPasteService {
       .load(relativePath: path, mode: imageOutputMode, maxDimension: imageMaxDimension)
   }
 }
+
+@MainActor
+final class ClipWorkflowService {
+  let store: ClipStore
+  let uiState: ClipViewState
+  let repository: ClipRepository
+  let pasteService: ClipboardPasteService
+
+  init(
+    store: ClipStore,
+    uiState: ClipViewState,
+    repository: ClipRepository,
+    pasteService: ClipboardPasteService
+  ) {
+    self.store = store
+    self.uiState = uiState
+    self.repository = repository
+    self.pasteService = pasteService
+  }
+
+  func bootstrap() {
+    uiState.normalizeSelection()
+  }
+
+  func labelValue(for id: String) -> String {
+    store.item(for: id)?.label ?? ""
+  }
+
+  func capture(_ item: ClipItem) {
+    store.insertOrPromote(item)
+    uiState.select([item.id])
+    commitItems()
+  }
+
+  func pasteSelection(
+    mode: PasteMode,
+    imageOutputMode: ImageOutputMode,
+    imageMaxDimension: Double
+  ) -> String? {
+    let items = uiState.selectedItems.isEmpty
+      ? [uiState.focusedItem].compactMap { $0 }
+      : uiState.selectedItems
+    let activeItems = items.filter { !$0.isTrashed }
+    guard !activeItems.isEmpty else {
+      return "Trash items can't paste"
+    }
+
+    pasteService.paste(
+      items: activeItems,
+      mode: mode,
+      imageOutputMode: imageOutputMode,
+      imageMaxDimension: imageMaxDimension
+    )
+
+    let usesLowResolution = imageOutputMode == .lowResolution && activeItems.contains { $0.kind == .image }
+    switch (mode, usesLowResolution) {
+    case (.normalEnter, true):
+      return "Pasted low-res image"
+    case (.nativeShiftEnter, true):
+      return "Native pasted low-res image"
+    case (.normalEnter, false):
+      return "Pasted"
+    case (.nativeShiftEnter, false):
+      return "Native pasted"
+    }
+  }
+
+  func updateText(for id: String, text: String, languageGuess: String?) {
+    store.updateText(for: id, text: text, languageGuess: languageGuess)
+    commitItems()
+  }
+
+  func updateLabel(for id: String, label: String) {
+    store.updateLabel(for: id, label: label)
+    commitItems()
+  }
+
+  func setFavorite(_ ids: Set<String>, favorite: Bool) {
+    store.setFavorite(ids, favorite: favorite)
+    commitItems()
+  }
+
+  func toggleFavorite(for id: String) {
+    store.toggleFavorite(for: id)
+    commitItems()
+  }
+
+  func moveItems(within sectionIDs: [String], from offsets: IndexSet, to destination: Int) {
+    store.moveItems(within: sectionIDs, from: offsets, to: destination)
+    uiState.normalizeSelection()
+    commitItems()
+  }
+
+  func reverseSelection() {
+    store.reverseItems(uiState.selectedItems.map(\.id))
+    uiState.normalizeSelection()
+    commitItems()
+  }
+
+  func delete(_ ids: Set<String>, permanently: Bool) {
+    store.delete(ids, permanently: permanently)
+    uiState.checkedIDs.subtract(ids)
+    uiState.selectedIDs.subtract(ids)
+    uiState.normalizeSelection()
+    commitItems()
+  }
+
+  func restore(_ ids: Set<String>) {
+    let restoredIDs = store.restore(ids)
+    uiState.select(Set(restoredIDs))
+    uiState.normalizeSelection()
+    commitItems()
+  }
+
+  func clearAll() {
+    store.clearAll()
+    uiState.selectedIDs.removeAll()
+    uiState.checkedIDs.removeAll()
+    uiState.focusedID = nil
+    repository.clearAll()
+  }
+
+  func copyLowResolutionImage(
+    from item: ClipItem,
+    imageMaxDimension: Double
+  ) -> Bool {
+    guard
+      item.kind == .image,
+      let path = item.content.imageAssetPath,
+      let image = repository.imageAssetStore.load(
+        relativePath: path,
+        mode: .lowResolution,
+        maxDimension: imageMaxDimension
+      ),
+      let saved = try? repository.imageAssetStore.save(image)
+    else {
+      return false
+    }
+
+    let trimmedLabel = item.label.trimmingCharacters(in: .whitespacesAndNewlines)
+    let newItem = ClipItem(
+      kind: .image,
+      favorite: item.favorite,
+      label: trimmedLabel.isEmpty ? "" : "\(trimmedLabel) low",
+      content: .image(assetPath: saved.relativePath),
+      meta: ClipMeta(
+        imageWidth: saved.width,
+        imageHeight: saved.height,
+        imageHash: saved.hash,
+        imageByteSize: saved.byteSize
+      )
+    )
+    store.insertOrPromote(newItem)
+    uiState.select([newItem.id])
+    commitItems()
+    return true
+  }
+
+  func commitItems() {
+    repository.commitItems(store.items)
+  }
+}

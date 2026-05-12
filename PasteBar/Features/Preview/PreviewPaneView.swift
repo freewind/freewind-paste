@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PreviewPaneView: View {
   @EnvironmentObject private var appState: AppState
+  @EnvironmentObject private var uiState: ClipViewState
   @EnvironmentObject private var store: ClipStore
 
   var body: some View {
@@ -20,9 +21,9 @@ struct PreviewPaneView: View {
       }
 
       Group {
-        if store.selectedItems.count > 1 {
+        if uiState.selectedItems.count > 1 {
           multiSelectionContent
-        } else if let item = store.focusedItem {
+        } else if let item = uiState.focusedItem {
           content(item: item)
         } else {
           ContentUnavailableView("No Selection", systemImage: "cursorarrow.click")
@@ -36,7 +37,7 @@ struct PreviewPaneView: View {
   private var multiSelectionContent: some View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 12) {
-        ForEach(Array(store.selectedItems.enumerated()), id: \.element.id) { index, item in
+        ForEach(Array(uiState.selectedItems.enumerated()), id: \.element.id) { index, item in
           VStack(alignment: .leading, spacing: 10) {
             if item.kind != .text {
               HStack {
@@ -116,9 +117,9 @@ struct PreviewPaneView: View {
   }
 
   private var hasImageSelection: Bool {
-    let items = store.selectedItems.isEmpty
-      ? [store.focusedItem].compactMap { $0 }
-      : store.selectedItems
+    let items = uiState.selectedItems.isEmpty
+      ? [uiState.focusedItem].compactMap { $0 }
+      : uiState.selectedItems
     return items.contains { $0.kind == .image }
   }
 

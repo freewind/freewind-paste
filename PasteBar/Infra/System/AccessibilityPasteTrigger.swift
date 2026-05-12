@@ -1,7 +1,12 @@
+import AppKit
 import ApplicationServices
 import Foundation
 
 final class AccessibilityPasteTrigger {
+  func isPermissionGranted() -> Bool {
+    AXIsProcessTrusted()
+  }
+
   func requestPermissionIfNeeded() -> Bool {
     let promptKey = "AXTrustedCheckOptionPrompt" as CFString
     let options = [
@@ -10,8 +15,15 @@ final class AccessibilityPasteTrigger {
     return AXIsProcessTrustedWithOptions(options)
   }
 
+  func openSettings() {
+    guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
+      return
+    }
+    NSWorkspace.shared.open(url)
+  }
+
   func triggerPaste() {
-    guard AXIsProcessTrusted() else {
+    guard isPermissionGranted() else {
       _ = requestPermissionIfNeeded()
       return
     }

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HistoryRowView: View {
   @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var store: ClipStore
+  @EnvironmentObject private var uiState: ClipViewState
   let item: ClipItem
   @State private var isHovering = false
 
@@ -66,11 +66,11 @@ struct HistoryRowView: View {
   @ViewBuilder
   private var checkButton: some View {
     Button {
-      store.toggleChecked(item.id)
+      uiState.toggleChecked(item.id)
     } label: {
-      Image(systemName: store.checkedIDs.contains(item.id) ? "checkmark.square.fill" : "square")
+      Image(systemName: uiState.checkedIDs.contains(item.id) ? "checkmark.square.fill" : "square")
         .font(.system(size: 11))
-        .foregroundStyle(store.checkedIDs.contains(item.id) ? Color.accentColor : Color.secondary)
+        .foregroundStyle(uiState.checkedIDs.contains(item.id) ? Color.accentColor : Color.secondary)
         .frame(width: 12, height: 12)
     }
     .buttonStyle(.plain)
@@ -78,13 +78,12 @@ struct HistoryRowView: View {
 
   @ViewBuilder
   private var favoriteButton: some View {
-    if store.currentTab == .trash {
+    if uiState.currentTab == .trash {
       Color.clear
         .frame(width: 12, height: 12)
     } else {
       Button {
-        store.toggleFavorite(for: item.id)
-        appState.persistItems()
+        appState.toggleFavorite(for: item.id)
       } label: {
         Image(systemName: item.favorite ? "star.fill" : "star")
           .font(.system(size: 11))

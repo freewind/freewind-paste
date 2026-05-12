@@ -11,6 +11,7 @@ enum AppPaths {
 @MainActor
 final class AppState: ObservableObject {
   let store: ClipStore
+  let uiState: ClipViewState
   @Published var settings: AppSettings
   @Published var statusMessage: String
   @Published var isPopupVisible: Bool
@@ -19,10 +20,12 @@ final class AppState: ObservableObject {
   @Published var imageLowResMaxDimension: Double
   @Published var accessibilityGranted: Bool
 
-  let persistence: ClipPersistence
+  let repository: ClipRepository
   let imageAssetStore: ImageAssetStore
   let captureService: ClipboardCaptureService
   let pasteService: ClipboardPasteService
+  let workflowService: ClipWorkflowService
+  let accessibilityAccess: AccessibilityPasteTrigger
   let hotkeyService: HotkeyService
   let launchAtLoginService: LaunchAtLoginService
   let popupController: PopupWindowController
@@ -32,37 +35,47 @@ final class AppState: ObservableObject {
 
   init(
     persistence: ClipPersistence = AppPaths.persistence,
+    accessibilityAccess: AccessibilityPasteTrigger = AccessibilityPasteTrigger(),
     hotkeyService: HotkeyService = HotkeyService(),
     launchAtLoginService: LaunchAtLoginService = LaunchAtLoginService(),
     popupController: PopupWindowController = PopupWindowController(),
     settingsWindowController: SettingsWindowController = SettingsWindowController(),
     menuBarController: MenuBarController = MenuBarController()
   ) {
-    self.persistence = persistence
     imageAssetStore = ImageAssetStore(assetsDirectoryURL: AppPaths.assetsDirectoryURL)
+    repository = ClipRepository(
+      persistence: persistence,
+      imageAssetStore: imageAssetStore
+    )
     let parser = ClipboardParseService(imageAssetStore: imageAssetStore)
     captureService = ClipboardCaptureService(parser: parser)
-    pasteService = ClipboardPasteService(trigger: AccessibilityPasteTrigger())
+    pasteService = ClipboardPasteService(trigger: accessibilityAccess)
+    self.accessibilityAccess = accessibilityAccess
     self.hotkeyService = hotkeyService
     self.launchAtLoginService = launchAtLoginService
     self.popupController = popupController
     self.settingsWindowController = settingsWindowController
     self.menuBarController = menuBarController
-    let loadedSettings = persistence.loadSettings()
+    let loadedSettings = repository.loadSettings()
     settings = loadedSettings
-    store = ClipStore(
-      items: persistence.loadItems(),
-      previewLocked: loadedSettings.previewLocked
+    store = ClipStore(items: repository.loadItems())
+    uiState = ClipViewState(store: store)
+    workflowService = ClipWorkflowService(
+      store: store,
+      uiState: uiState,
+      repository: repository,
+      pasteService: pasteService
     )
     statusMessage = "Ready"
     isPopupVisible = false
     searchFocusNonce = 0
     imageOutputMode = .original
     imageLowResMaxDimension = 512
-    accessibilityGranted = AXIsProcessTrusted()
+    accessibilityGranted = accessibilityAccess.isPermissionGranted()
     if store.pruneExpiredTrash() {
-      persistItems()
+      workflowService.commitItems()
     }
+    workflowService.bootstrap()
   }
 
   func bootstrapIfNeeded() {
@@ -91,21 +104,13 @@ final class AppState: ObservableObject {
       }
     )
 
-    hotkeyService.register(settings.hotkey) { [weak self] in
-      Task { @MainActor [weak self] in
-        self?.showPopup()
-      }
-    }
-
-    if launchAtLoginService.isEnabled() != settings.launchAtLogin {
-      try? launchAtLoginService.setEnabled(settings.launchAtLogin)
-    }
+    registerHotkey()
+    syncLaunchAtLogin()
 
     captureService.start { [weak self] item in
       Task { @MainActor [weak self] in
-        self?.store.insertOrPromote(item)
+        self?.workflowService.capture(item)
         self?.statusMessage = "Captured \(item.kind.rawValue)"
-        self?.persistItems()
       }
     }
 
@@ -113,7 +118,7 @@ final class AppState: ObservableObject {
   }
 
   func showPopup() {
-    store.selectFirstVisible()
+    uiState.selectFirstVisible()
     searchFocusNonce += 1
     popupController.show(with: self)
   }
@@ -135,147 +140,101 @@ final class AppState: ObservableObject {
     alert.addButton(withTitle: "Save")
     alert.addButton(withTitle: "Cancel")
 
-    let field = NSTextField(string: store.items.first(where: { $0.id == id })?.label ?? "")
+    let field = NSTextField(string: workflowService.labelValue(for: id))
     field.frame = NSRect(x: 0, y: 0, width: 280, height: 24)
     alert.accessoryView = field
 
     if alert.runModal() == .alertFirstButtonReturn {
-      store.updateLabel(for: id, label: field.stringValue)
-      persistItems()
+      workflowService.updateLabel(for: id, label: field.stringValue)
     }
   }
 
   func pasteSelection(mode: PasteMode) {
-    let items = store.selectedItems.isEmpty
-      ? [store.focusedItem].compactMap { $0 }
-      : store.selectedItems
-    let activeItems = items.filter { !$0.isTrashed }
-    guard !activeItems.isEmpty else {
-      statusMessage = "Trash items can't paste"
-      return
-    }
-    pasteService.paste(
-      items: activeItems,
+    if let message = workflowService.pasteSelection(
       mode: mode,
       imageOutputMode: imageOutputMode,
       imageMaxDimension: imageLowResMaxDimension
-    )
-    let usesLowResolution = imageOutputMode == .lowResolution && activeItems.contains { $0.kind == .image }
-    switch (mode, usesLowResolution) {
-    case (.normalEnter, true):
-      statusMessage = "Pasted low-res image"
-    case (.nativeShiftEnter, true):
-      statusMessage = "Native pasted low-res image"
-    case (.normalEnter, false):
-      statusMessage = "Pasted"
-    case (.nativeShiftEnter, false):
-      statusMessage = "Native pasted"
+    ) {
+      statusMessage = message
+      if message.hasPrefix("Pasted") || message.hasPrefix("Native pasted") {
+        hidePopup()
+      }
     }
-    hidePopup()
   }
 
   func deleteSelection(permanently: Bool) {
-    store.delete(store.selectedIDs, permanently: permanently)
-    persistItems()
+    workflowService.delete(uiState.selectedIDs, permanently: permanently)
     statusMessage = permanently ? "Deleted permanently" : "Moved to trash"
   }
 
   func deleteCheckedVisible(permanently: Bool) {
-    let ids = Set(store.checkedVisibleItems.map(\.id))
-    store.delete(ids, permanently: permanently)
-    persistItems()
+    workflowService.delete(Set(uiState.checkedVisibleItems.map(\.id)), permanently: permanently)
     statusMessage = permanently ? "Deleted permanently" : "Moved to trash"
   }
 
   func restoreSelection() {
-    store.restoreSelected()
-    persistItems()
+    workflowService.restore(uiState.selectedIDs)
     statusMessage = "Restored"
   }
 
   func restore(_ id: String) {
-    store.restore(id)
-    persistItems()
+    workflowService.restore([id])
     statusMessage = "Restored"
   }
 
   func updateSettings(_ mutate: (inout AppSettings) -> Void) {
     mutate(&settings)
-    store.previewLocked = settings.previewLocked
-    try? persistence.saveSettings(settings)
-
-    hotkeyService.register(settings.hotkey) { [weak self] in
-      Task { @MainActor [weak self] in
-        self?.showPopup()
-      }
-    }
-
-    try? launchAtLoginService.setEnabled(settings.launchAtLogin)
-  }
-
-  func persistItems() {
-    try? persistence.saveItems(store.items)
-    let keptImages = Set(
-      store.items.compactMap { item in
-        item.kind == .image ? item.content.imageAssetPath : nil
-      }
-    )
-    imageAssetStore.prune(keeping: keptImages)
+    repository.saveSettings(settings)
+    registerHotkey()
+    syncLaunchAtLogin()
   }
 
   func clearAll() {
-    store.clearAll()
-    try? persistence.saveItems([])
-    imageAssetStore.prune(keeping: Set<String>())
+    workflowService.clearAll()
     statusMessage = "Cleared"
   }
 
   func copyLowResolutionImage(from item: ClipItem) {
-    guard
-      item.kind == .image,
-      let path = item.content.imageAssetPath,
-      let image = imageAssetStore.load(
-        relativePath: path,
-        mode: .lowResolution,
-        maxDimension: imageLowResMaxDimension
-      ),
-      let saved = try? imageAssetStore.save(image)
-    else {
-      return
+    if workflowService.copyLowResolutionImage(from: item, imageMaxDimension: imageLowResMaxDimension) {
+      statusMessage = "Copied low-res image"
     }
+  }
 
-    let trimmedLabel = item.label.trimmingCharacters(in: .whitespacesAndNewlines)
-    let newItem = ClipItem(
-      kind: .image,
-      favorite: item.favorite,
-      label: trimmedLabel.isEmpty ? "" : "\(trimmedLabel) low",
-      content: .image(assetPath: saved.relativePath),
-      meta: ClipMeta(
-        imageWidth: saved.width,
-        imageHeight: saved.height,
-        imageHash: saved.hash,
-        imageByteSize: saved.byteSize
-      )
+  func moveItems(within sectionIDs: [String], from offsets: IndexSet, to destination: Int) {
+    workflowService.moveItems(within: sectionIDs, from: offsets, to: destination)
+  }
+
+  func reverseSelection() {
+    workflowService.reverseSelection()
+  }
+
+  func toggleFavorite(for id: String) {
+    workflowService.toggleFavorite(for: id)
+  }
+
+  func setFavorite(_ ids: Set<String>, favorite: Bool) {
+    workflowService.setFavorite(ids, favorite: favorite)
+  }
+
+  func updateText(for id: String, text: String) {
+    workflowService.updateText(
+      for: id,
+      text: text,
+      languageGuess: LanguageGuessService.guess(for: text)
     )
-    store.insertOrPromote(newItem)
-    persistItems()
-    statusMessage = "Copied low-res image"
   }
 
   func requestAccessibilityPermission() {
-    _ = pasteService.trigger.requestPermissionIfNeeded()
+    _ = accessibilityAccess.requestPermissionIfNeeded()
     refreshAccessibilityStatus()
   }
 
   func openAccessibilitySettings() {
-    guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
-      return
-    }
-    NSWorkspace.shared.open(url)
+    accessibilityAccess.openSettings()
   }
 
   func refreshAccessibilityStatus() {
-    accessibilityGranted = AXIsProcessTrusted()
+    accessibilityGranted = accessibilityAccess.isPermissionGranted()
   }
 
   func handlePopupKeyDown(_ event: NSEvent) -> NSEvent? {
@@ -292,7 +251,7 @@ final class AppState: ObservableObject {
       return event
     }
 
-    deleteSelection(permanently: event.modifierFlags.contains(.command) || store.currentTab == .trash)
+    deleteSelection(permanently: event.modifierFlags.contains(.command) || uiState.currentTab == .trash)
     return nil
   }
 
@@ -302,9 +261,21 @@ final class AppState: ObservableObject {
     }
 
     if responder.isFieldEditor {
-      return !store.searchQuery.isEmpty
+      return !uiState.searchQuery.isEmpty
     }
 
     return true
+  }
+
+  private func registerHotkey() {
+    hotkeyService.register(settings.hotkey) { [weak self] in
+      Task { @MainActor [weak self] in
+        self?.showPopup()
+      }
+    }
+  }
+
+  private func syncLaunchAtLogin() {
+    try? launchAtLoginService.setEnabled(settings.launchAtLogin)
   }
 }

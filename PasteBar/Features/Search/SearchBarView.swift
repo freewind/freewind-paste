@@ -2,11 +2,11 @@ import SwiftUI
 
 struct SearchBarView: View {
   @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var store: ClipStore
+  @EnvironmentObject private var uiState: ClipViewState
   @FocusState private var isFocused: Bool
 
   var body: some View {
-    TextField("Search", text: $store.searchQuery)
+    TextField("Search", text: $uiState.searchQuery)
       .textFieldStyle(.roundedBorder)
       .font(.system(size: 18))
       .controlSize(.large)
@@ -18,8 +18,8 @@ struct SearchBarView: View {
       .onChange(of: appState.searchFocusNonce) { _, _ in
         isFocused = true
       }
-      .onChange(of: store.searchQuery) { _, _ in
-        store.selectFirstVisible()
+      .onChange(of: uiState.searchQuery) { _, _ in
+        uiState.selectFirstVisible()
       }
       .onSubmit {
         appState.pasteSelection(mode: .normalEnter)
@@ -27,9 +27,9 @@ struct SearchBarView: View {
       .onMoveCommand { direction in
         switch direction {
         case .up:
-          store.moveFocus(by: -1)
+          uiState.moveFocus(by: -1)
         case .down:
-          store.moveFocus(by: 1)
+          uiState.moveFocus(by: 1)
         default:
           break
         }

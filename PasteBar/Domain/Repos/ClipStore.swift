@@ -1,134 +1,20 @@
 import Combine
-import AppKit
 import Foundation
 
 @MainActor
 final class ClipStore: ObservableObject {
-  enum VisibleCheckedState {
-    case none
-    case partial
-    case all
-
-    var iconName: String {
-      switch self {
-      case .none:
-        return "square"
-      case .partial:
-        return "minus.square.fill"
-      case .all:
-        return "checkmark.square.fill"
-      }
-    }
-  }
-
   @Published var items: [ClipItem]
-  @Published var selectedIDs: Set<String>
-  @Published var checkedIDs: Set<String>
-  @Published var focusedID: String?
-  @Published var currentTab: MainTab
-  @Published var searchQuery: String
-  @Published var kindFilter: ClipKindFilter
-  @Published var previewLocked: Bool
-  var selectionAnchorID: String?
 
-  init(
-    items: [ClipItem] = [],
-    selectedIDs: Set<String> = [],
-    checkedIDs: Set<String> = [],
-    focusedID: String? = nil,
-    currentTab: MainTab = .history,
-    searchQuery: String = "",
-    kindFilter: ClipKindFilter = .all,
-    previewLocked: Bool = false
-  ) {
+  init(items: [ClipItem] = []) {
     self.items = items
-    self.selectedIDs = selectedIDs
-    self.checkedIDs = checkedIDs
-    self.focusedID = focusedID
-    self.currentTab = currentTab
-    self.searchQuery = searchQuery
-    self.kindFilter = kindFilter
-    self.previewLocked = previewLocked
-    selectionAnchorID = focusedID ?? selectedIDs.first
   }
 
-  var visibleItems: [ClipItem] {
-    items
-      .filter { item in
-        switch currentTab {
-        case .history:
-          return !item.isTrashed
-        case .favorites:
-          return !item.isTrashed && item.favorite
-        case .trash:
-          return item.isTrashed
-        }
-      }
-      .filter { item in
-        switch kindFilter {
-        case .all:
-          return true
-        case .text:
-          return item.kind == .text
-        case .image:
-          return item.kind == .image
-        case .file:
-          return item.kind == .file
-        }
-      }
-      .filter { SearchService.matches(item: $0, query: searchQuery) }
-  }
-
-  var groupedVisibleItems: [GroupedItems] {
-    let groups = Dictionary(grouping: visibleItems) { item in
-      DateGroup.title(for: item.groupingDate)
-    }
-
-    return ["Today", "Yesterday", "Earlier"]
-      .compactMap { title in
-        guard let values = groups[title], !values.isEmpty else {
-          return nil
-        }
-        return GroupedItems(id: title, title: title, items: values)
-      }
-  }
-
-  var focusedItem: ClipItem? {
-    if let focusedID, let item = visibleItems.first(where: { $0.id == focusedID }) {
-      return item
-    }
-    return selectedItems.first ?? visibleItems.first
-  }
-
-  var selectedItems: [ClipItem] {
-    visibleItems.filter { selectedIDs.contains($0.id) }
-  }
-
-  var checkedVisibleItems: [ClipItem] {
-    visibleItems.filter { checkedIDs.contains($0.id) }
-  }
-
-  var checkedVisibleCount: Int {
-    checkedVisibleItems.count
-  }
-
-  var allVisibleChecked: Bool {
-    !visibleItems.isEmpty && checkedVisibleCount == visibleItems.count
-  }
-
-  var visibleCheckedState: VisibleCheckedState {
-    if checkedVisibleCount == 0 {
-      return .none
-    }
-    if allVisibleChecked {
-      return .all
-    }
-    return .partial
+  func item(for id: String) -> ClipItem? {
+    items.first { $0.id == id }
   }
 
   func setItems(_ newItems: [ClipItem]) {
     items = newItems
-    normalizeSelection()
   }
 
   func insertOrPromote(_ incoming: ClipItem) {
@@ -144,110 +30,6 @@ final class ClipStore: ObservableObject {
       next.insert(incoming, at: 0)
     }
     items = next
-    selectedIDs = [incoming.id]
-    focusedID = incoming.id
-    selectionAnchorID = incoming.id
-  }
-
-  func normalizeSelection() {
-    let visibleIDs = Set(visibleItems.map(\.id))
-    let allIDs = Set(items.map(\.id))
-
-    selectedIDs = selectedIDs.intersection(visibleIDs)
-    checkedIDs = checkedIDs.intersection(allIDs)
-
-    if let focusedID, !visibleIDs.contains(focusedID) {
-      self.focusedID = nil
-    }
-
-    if focusedID == nil {
-      focusedID = selectedItems.first?.id ?? visibleItems.first?.id
-    }
-
-    if selectionAnchorID == nil || !visibleIDs.contains(selectionAnchorID ?? "") {
-      selectionAnchorID = focusedID
-    }
-  }
-
-  func select(_ ids: Set<String>) {
-    selectedIDs = ids
-    if let id = visibleItems.first(where: { ids.contains($0.id) })?.id {
-      focusedID = id
-      selectionAnchorID = id
-    }
-  }
-
-  func focus(_ id: String?) {
-    focusedID = id
-    if let id {
-      selectionAnchorID = id
-    }
-  }
-
-  func selectFirstVisible() {
-    guard let first = visibleItems.first else {
-      selectedIDs.removeAll()
-      focusedID = nil
-      return
-    }
-    selectedIDs = [first.id]
-    focusedID = first.id
-    selectionAnchorID = first.id
-  }
-
-  func moveFocus(by offset: Int) {
-    guard !visibleItems.isEmpty else {
-      selectedIDs.removeAll()
-      focusedID = nil
-      return
-    }
-
-    let orderedIDs = visibleItems.map(\.id)
-    let currentID = focusedID ?? orderedIDs.first
-    let currentIndex = currentID.flatMap { orderedIDs.firstIndex(of: $0) } ?? 0
-    let nextIndex = min(max(currentIndex + offset, 0), orderedIDs.count - 1)
-    let nextID = orderedIDs[nextIndex]
-    selectedIDs = [nextID]
-    focusedID = nextID
-    selectionAnchorID = nextID
-  }
-
-  func handleClick(
-    on id: String,
-    orderedIDs: [String],
-    modifiers: NSEvent.ModifierFlags
-  ) {
-    if modifiers.contains(.shift) {
-      let anchor = selectionAnchorID ?? focusedID ?? id
-      guard
-        let start = orderedIDs.firstIndex(of: anchor),
-        let end = orderedIDs.firstIndex(of: id)
-      else {
-        selectedIDs = [id]
-        focusedID = id
-        selectionAnchorID = id
-        return
-      }
-      let range = start <= end ? start...end : end...start
-      selectedIDs = Set(orderedIDs[range])
-      focusedID = id
-      return
-    }
-
-    if modifiers.contains(.command) {
-      if selectedIDs.contains(id) {
-        selectedIDs.remove(id)
-      } else {
-        selectedIDs.insert(id)
-      }
-      focusedID = id
-      selectionAnchorID = id
-      return
-    }
-
-    selectedIDs = [id]
-    focusedID = id
-    selectionAnchorID = id
   }
 
   func moveItems(
@@ -284,40 +66,9 @@ final class ClipStore: ObservableObject {
     }
 
     items = result
-    normalizeSelection()
   }
 
-  func toggleChecked(_ id: String) {
-    if checkedIDs.contains(id) {
-      checkedIDs.remove(id)
-    } else {
-      checkedIDs.insert(id)
-    }
-  }
-
-  func setVisibleChecked(_ checked: Bool) {
-    let ids = Set(visibleItems.map(\.id))
-    if checked {
-      checkedIDs.formUnion(ids)
-    } else {
-      checkedIDs.subtract(ids)
-    }
-  }
-
-  func clearCheckedVisible() {
-    checkedIDs.subtract(visibleItems.map(\.id))
-  }
-
-  func deleteCheckedVisible() {
-    let ids = Set(checkedVisibleItems.map(\.id))
-    guard !ids.isEmpty else {
-      return
-    }
-    delete(ids, permanently: currentTab == .trash)
-  }
-
-  func reverseSelection() {
-    let ids = selectedItems.map(\.id)
+  func reverseItems(_ ids: [String]) {
     guard ids.count > 1 else {
       return
     }
@@ -335,8 +86,8 @@ final class ClipStore: ObservableObject {
         mutable[position] = replacement
       }
     }
+
     items = mutable
-    normalizeSelection()
   }
 
   func toggleFavorite(for id: String) {
@@ -380,28 +131,13 @@ final class ClipStore: ObservableObject {
     items[index].updatedAt = .now
   }
 
-  func deleteSelected() {
-    delete(selectedIDs, permanently: currentTab == .trash)
-  }
-
-  func delete(_ id: String) {
-    delete([id], permanently: currentTab == .trash)
-  }
-
-  func restoreSelected() {
-    restore(selectedIDs)
-  }
-
-  func restore(_ id: String) {
-    restore([id])
-  }
-
-  func restore(_ ids: Set<String>) {
+  func restore(_ ids: Set<String>) -> [String] {
     guard !ids.isEmpty else {
-      return
+      return []
     }
 
     let now = Date.now
+    var restoredIDs: [String] = []
     var restored: [ClipItem] = []
 
     items.removeAll { item in
@@ -411,15 +147,13 @@ final class ClipStore: ObservableObject {
       var next = item
       next.trashedAt = nil
       next.updatedAt = now
+      restoredIDs.append(next.id)
       restored.append(next)
       return true
     }
 
     items.insert(contentsOf: restored, at: 0)
-    selectedIDs = Set(restored.map(\.id))
-    focusedID = restored.first?.id
-    selectionAnchorID = focusedID
-    normalizeSelection()
+    return restoredIDs
   }
 
   func pruneExpiredTrash(olderThan days: Int = 7, now: Date = .now) -> Bool {
@@ -431,18 +165,11 @@ final class ClipStore: ObservableObject {
       }
       return trashedAt < cutoff
     }
-    if items.count != oldCount {
-      normalizeSelection()
-      return true
-    }
-    return false
+    return items.count != oldCount
   }
 
   func clearAll() {
     items.removeAll()
-    selectedIDs.removeAll()
-    checkedIDs.removeAll()
-    focusedID = nil
   }
 
   func delete(_ ids: Set<String>, permanently: Bool) {
@@ -472,21 +199,9 @@ final class ClipStore: ObservableObject {
     }
 
     items.insert(contentsOf: trashed, at: 0)
-    checkedIDs.subtract(ids)
-    selectedIDs.subtract(ids)
-    focusedID = visibleItems.first?.id
-    selectionAnchorID = focusedID
-    normalizeSelection()
   }
 
   private func hardDelete(_ ids: Set<String>) {
     items.removeAll { ids.contains($0.id) }
-    checkedIDs.subtract(ids)
-    selectedIDs.subtract(ids)
-    if let focusedID, ids.contains(focusedID) {
-      self.focusedID = nil
-    }
-    selectionAnchorID = focusedID
-    normalizeSelection()
   }
 }

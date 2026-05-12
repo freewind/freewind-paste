@@ -2,7 +2,6 @@ import SwiftUI
 
 struct TextPreviewView: View {
   @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var store: ClipStore
   let item: ClipItem
   var showsHeader: Bool = true
   var showsMetrics: Bool = true
@@ -85,12 +84,7 @@ struct TextPreviewView: View {
       guard !Task.isCancelled else {
         return
       }
-      store.updateText(
-        for: item.id,
-        text: newValue,
-        languageGuess: LanguageGuessService.guess(for: newValue)
-      )
-      appState.persistItems()
+      appState.updateText(for: item.id, text: newValue)
     }
   }
 
@@ -108,12 +102,7 @@ struct TextPreviewView: View {
     guard draftText != current else {
       return
     }
-    store.updateText(
-      for: item.id,
-      text: draftText,
-      languageGuess: LanguageGuessService.guess(for: draftText)
-    )
-    appState.persistItems()
+    appState.updateText(for: item.id, text: draftText)
   }
 
   private var measurementText: String {

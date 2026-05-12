@@ -135,59 +135,86 @@ struct AppHotkey: Codable, Equatable {
 struct AppSettings: Codable, Equatable {
   var hotkey: AppHotkey
   var launchAtLogin: Bool
-  var previewLocked: Bool
 }
 ```
-
-说明：
-
-- `previewLocked` 当前仍保留在 settings model 里，但 UI 已不再强调
 
 ## 运行态状态
 
 ### ClipStore
 
-核心字段：
+只放领域数据：
 
 ```swift
 @Published var items: [ClipItem]
+```
+
+修改入口：
+
+- `insertOrPromote`
+- `moveItems`
+- `reverseItems`
+- `toggleFavorite / setFavorite`
+- `updateLabel / updateText`
+- `delete / restore / clearAll`
+- `pruneExpiredTrash`
+
+不放：
+
+- 选中态
+- 搜索态
+- tab
+- filter
+- 任何窗口/UI 状态
+
+### ClipViewState
+
+只放 UI 查询态 + 选择态：
+
+```swift
 @Published var selectedIDs: Set<String>
 @Published var checkedIDs: Set<String>
 @Published var focusedID: String?
 @Published var currentTab: MainTab
 @Published var searchQuery: String
 @Published var kindFilter: ClipKindFilter
-@Published var previewLocked: Bool
 var selectionAnchorID: String?
 ```
 
-语义区分：
-
-- `selectedIDs`
-  - 预览/粘贴选择
-  - 支持单选、`Shift` 连选、`Command` 零散选
-- `checkedIDs`
-  - 批量操作勾选
-  - 只对当前 `visibleItems` 计算全选/半选/删除
-- `focusedID`
-  - 键盘上下移动焦点
-- `currentTab`
-  - `history / favorites / trash`
-- `kindFilter`
-  - `all / text / image / file`
-- `selectionAnchorID`
-  - `Shift` 选择锚点
-
-派生数据：
+派生查询：
 
 - `visibleItems`
-  - `tab + type + search` 后的结果集
 - `groupedVisibleItems`
-  - `Today / Yesterday / Earlier`
+- `focusedItem`
+- `selectedItems`
 - `checkedVisibleItems`
-  - 当前搜索结果里被勾选的项
 - `visibleCheckedState`
-  - `none / partial / all`
+
+交互入口：
+
+- `normalizeSelection`
+- `select / focus / selectFirstVisible`
+- `moveFocus`
+- `handleClick`
+- `toggleChecked / setVisibleChecked / clearCheckedVisible`
+
+### ClipWorkflowService
+
+业务编排层：
+
+- `capture`
+- `pasteSelection`
+- `updateText / updateLabel`
+- `toggleFavorite / setFavorite`
+- `moveItems / reverseSelection`
+- `delete / restore / clearAll`
+- `copyLowResolutionImage`
+- `commitItems`
+
+规则：
+
+- 上层不自己拼 `store + repo`
+- 一次业务动作内，持久化只经 `commitItems`
+- `uiState` 修正与 `store` 改动一起收口在 service
 
 删除语义：
 
@@ -201,7 +228,14 @@ var selectionAnchorID: String?
 
 ### AppState
 
-当前新增的 UI / 运行态字段：
+当前职责：
+
+- app 壳层
+- 绑定菜单栏 / 热键 / 窗口
+- 调 workflow
+- 维护少量 app 级展示态
+
+主要字段：
 
 ```swift
 @Published var settings: AppSettings
@@ -221,6 +255,40 @@ var selectionAnchorID: String?
   - 低清图片当前预览/粘贴/复制使用的最长边
 - `accessibilityGranted`
   - Settings 窗口里轮询刷新
+
+### 持久化边界
+
+分两层：
+
+- `ClipPersistence`
+  - jsonl/json 文件 IO
+  - 最底层文件读写
+- `ClipRepository`
+  - store backend
+  - `loadItems/loadSettings/saveSettings/commitItems/clearAll`
+  - 读入迁移
+  - 图片资产清理
+
+当前读入迁移：
+
+- 旧文本项 `content.text` 缺失时，回填自 `meta.textPreview`
+- 补齐 `textPreview`
+- 文件项补 `fileCount/fileName`
+
+### 系统交互边界
+
+SDK 直接够用处，不额外包。
+
+需要权限/系统事件/窗口生命周期的，走 access util：
+
+- `AccessibilityPasteTrigger`
+- `HotkeyService`
+- `LaunchAtLoginService`
+- `PasteboardWatcher`
+- `CopyCommandMonitor`
+- `PopupWindowController`
+- `SettingsWindowController`
+- `MenuBarController`
 
 ## 图片低清流
 

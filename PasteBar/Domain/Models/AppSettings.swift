@@ -13,11 +13,9 @@ struct AppHotkey: Codable, Equatable {
 struct AppSettings: Codable, Equatable {
   var hotkey: AppHotkey
   var launchAtLogin: Bool
-  var previewLocked: Bool
 
   static let `default` = Self(
     hotkey: .default,
-    launchAtLogin: false,
-    previewLocked: false
+    launchAtLogin: false
   )
 }

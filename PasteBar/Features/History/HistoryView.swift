@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
   @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var store: ClipStore
+  @EnvironmentObject private var uiState: ClipViewState
 
   var body: some View {
     VStack(spacing: 0) {
@@ -12,7 +12,7 @@ struct HistoryView: View {
 
       NavigationSplitView {
         VStack(spacing: 8) {
-          Picker("", selection: $store.currentTab) {
+          Picker("", selection: $uiState.currentTab) {
             Text("History").tag(MainTab.history)
             Text("Favorites").tag(MainTab.favorites)
             Text("Trash").tag(MainTab.trash)
@@ -36,13 +36,13 @@ struct HistoryView: View {
       appState.handlePopupKeyDown(event)
     })
     .onAppear {
-      store.normalizeSelection()
+      uiState.normalizeSelection()
     }
-    .onChange(of: store.currentTab) { _, _ in
-      store.normalizeSelection()
+    .onChange(of: uiState.currentTab) { _, _ in
+      uiState.normalizeSelection()
     }
-    .onChange(of: store.kindFilter) { _, _ in
-      store.normalizeSelection()
+    .onChange(of: uiState.kindFilter) { _, _ in
+      uiState.normalizeSelection()
     }
   }
 
@@ -50,7 +50,7 @@ struct HistoryView: View {
     HStack(spacing: 10) {
       SearchBarView()
 
-      Picker("Type", selection: $store.kindFilter) {
+      Picker("Type", selection: $uiState.kindFilter) {
         ForEach(ClipKindFilter.allCases, id: \.self) { filter in
           Text(filter.title).tag(filter)
         }
@@ -66,46 +66,45 @@ struct HistoryView: View {
   private var sidebarFooter: some View {
     HStack(spacing: 8) {
       Button {
-        store.setVisibleChecked(!store.allVisibleChecked)
+        uiState.setVisibleChecked(!uiState.allVisibleChecked)
       } label: {
-        Image(systemName: store.visibleCheckedState.iconName)
-          .foregroundStyle(store.checkedVisibleCount > 0 ? Color.accentColor : Color.secondary)
+        Image(systemName: uiState.visibleCheckedState.iconName)
+          .foregroundStyle(uiState.checkedVisibleCount > 0 ? Color.accentColor : Color.secondary)
       }
 
-      Text("\(store.checkedVisibleCount)")
+      Text("\(uiState.checkedVisibleCount)")
         .font(.caption)
         .foregroundStyle(.secondary)
         .frame(minWidth: 18, alignment: .leading)
 
-      if store.currentTab == .trash {
+      if uiState.currentTab == .trash {
         Button("Restore") {
           appState.restoreSelection()
         }
-        .disabled(store.selectedIDs.isEmpty)
+        .disabled(uiState.selectedIDs.isEmpty)
       }
 
-      Button(store.currentTab == .trash ? "Delete Checked" : "Trash Checked") {
-        appState.deleteCheckedVisible(permanently: store.currentTab == .trash)
+      Button(uiState.currentTab == .trash ? "Delete Checked" : "Trash Checked") {
+        appState.deleteCheckedVisible(permanently: uiState.currentTab == .trash)
       }
-      .disabled(store.checkedVisibleCount == 0)
+      .disabled(uiState.checkedVisibleCount == 0)
 
       Button("Reverse") {
-        store.reverseSelection()
-        appState.persistItems()
+        appState.reverseSelection()
       }
-      .disabled(store.selectedItems.count < 2)
+      .disabled(uiState.selectedItems.count < 2)
 
-      Button(store.currentTab == .trash ? "Delete" : "Trash") {
-        appState.deleteSelection(permanently: store.currentTab == .trash)
+      Button(uiState.currentTab == .trash ? "Delete" : "Trash") {
+        appState.deleteSelection(permanently: uiState.currentTab == .trash)
       }
-      .disabled(store.selectedIDs.isEmpty)
+      .disabled(uiState.selectedIDs.isEmpty)
 
       Spacer()
 
       Menu("More") {
-        if store.checkedVisibleCount > 0 {
+        if uiState.checkedVisibleCount > 0 {
           Button("Clear Visible Checks") {
-            store.clearCheckedVisible()
+            uiState.clearCheckedVisible()
           }
         }
         Button("Settings") {

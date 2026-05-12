@@ -19,6 +19,7 @@ struct PasteBarApp: App {
     Settings {
       SettingsView()
         .environmentObject(appState)
+        .environmentObject(appState.uiState)
         .environmentObject(appState.store)
         .frame(width: 520, height: 360)
     }
