@@ -41,16 +41,35 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
       return
     }
 
-    if let tableView = window.contentView?.firstSubview(where: { view in
-      view is NSTableView || view is NSOutlineView
-    }) {
+    if let tableView = historyListView() {
       window.makeFirstResponder(tableView)
       return
     }
 
-    if let scrollView = window.contentView?.firstSubview(where: { $0 is NSScrollView }) {
+    if let scrollView = historyListScrollView() {
       window.makeFirstResponder(scrollView)
     }
+  }
+
+  func activateHistoryListIfNeeded(for event: NSEvent) {
+    guard
+      let window,
+      let scrollView = historyListScrollView()
+    else {
+      return
+    }
+
+    let location = scrollView.convert(event.locationInWindow, from: nil)
+    guard scrollView.bounds.contains(location) else {
+      return
+    }
+
+    if let tableView = historyListView() {
+      window.makeFirstResponder(tableView)
+      return
+    }
+
+    window.makeFirstResponder(scrollView)
   }
 
   private func makeWindow(appState: AppState) -> NSWindow {
@@ -62,13 +81,14 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
     let hostingView = NSHostingView(rootView: root)
     let window = BorderlessPopupWindow(
       contentRect: NSRect(x: 0, y: 0, width: 980, height: 620),
-      styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+      styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
       backing: .buffered,
       defer: false
     )
     window.isOpaque = false
     window.backgroundColor = .windowBackgroundColor
     window.isReleasedWhenClosed = false
+    window.minSize = NSSize(width: 960, height: 620)
     window.delegate = self
     window.isMovableByWindowBackground = true
     window.titleVisibility = .hidden
@@ -80,6 +100,20 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
 
   func windowWillClose(_ notification: Notification) {
     hide()
+  }
+
+  private func historyListView() -> NSView? {
+    window?.contentView?.firstSubview(where: { view in
+      view is NSTableView || view is NSOutlineView
+    })
+  }
+
+  private func historyListScrollView() -> NSScrollView? {
+    if let tableView = historyListView() {
+      return tableView.enclosingScrollView
+    }
+
+    return window?.contentView?.firstSubview(where: { $0 is NSScrollView }) as? NSScrollView
   }
 }
 
@@ -121,7 +155,7 @@ final class TransientImagePreviewController: NSObject, NSWindowDelegate {
   private func makeWindow() -> NSPanel {
     let window = TransientPreviewPanel(
       contentRect: NSRect(x: 0, y: 0, width: 720, height: 520),
-      styleMask: [.titled, .fullSizeContentView],
+      styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
       backing: .buffered,
       defer: false
     )
@@ -129,6 +163,7 @@ final class TransientImagePreviewController: NSObject, NSWindowDelegate {
     window.hidesOnDeactivate = true
     window.isReleasedWhenClosed = false
     window.collectionBehavior = [.transient, .moveToActiveSpace]
+    window.minSize = NSSize(width: 320, height: 220)
     window.delegate = self
     return window
   }

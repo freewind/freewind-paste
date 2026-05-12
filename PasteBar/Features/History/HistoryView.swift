@@ -10,7 +10,7 @@ struct HistoryView: View {
 
       Divider()
 
-      NavigationSplitView {
+      HSplitView {
         VStack(spacing: 8) {
           Picker("", selection: $uiState.currentTab) {
             Text("History").tag(MainTab.history)
@@ -25,15 +25,22 @@ struct HistoryView: View {
         }
         .padding(.horizontal, 6)
         .padding(.bottom, 6)
-        .frame(minWidth: 360, idealWidth: 420, maxWidth: 460, maxHeight: .infinity)
-      } detail: {
+        .frame(minWidth: 320, idealWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
+
         PreviewPaneView()
+          .frame(minWidth: 420, idealWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
       }
     }
     .frame(minWidth: 960, minHeight: 620)
-    .navigationSplitViewColumnWidth(min: 360, ideal: 420, max: 460)
-    .background(PopupKeyMonitorView { event in
-      appState.handlePopupKeyDown(event)
+    .background(PopupEventMonitorView { event in
+      switch event.type {
+      case .keyDown:
+        return appState.handlePopupKeyDown(event)
+      case .leftMouseDown:
+        return appState.handlePopupMouseDown(event)
+      default:
+        return event
+      }
     })
     .onAppear {
       uiState.normalizeSelection()
@@ -121,7 +128,7 @@ struct HistoryView: View {
   }
 }
 
-private struct PopupKeyMonitorView: NSViewRepresentable {
+private struct PopupEventMonitorView: NSViewRepresentable {
   let handler: (NSEvent) -> NSEvent?
 
   func makeNSView(context: Context) -> NSView {
@@ -149,7 +156,7 @@ private struct PopupKeyMonitorView: NSViewRepresentable {
     func start(handler: @escaping (NSEvent) -> NSEvent?) {
       self.handler = handler
       stop()
-      monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+      monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { [weak self] event in
         self?.handler?(event) ?? event
       }
     }

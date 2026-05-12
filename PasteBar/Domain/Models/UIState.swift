@@ -270,6 +270,25 @@ final class ClipViewState: ObservableObject {
     selectionAnchorID = targetID
   }
 
+  func collapseSelectionToAnchor() -> Bool {
+    guard selectedIDs.count > 1 else {
+      return false
+    }
+
+    let orderedIDs = visibleItems.map(\.id)
+    let targetID = selectionAnchorID.flatMap { selectedIDs.contains($0) ? $0 : nil }
+      ?? orderedIDs.first(where: { selectedIDs.contains($0) })
+
+    guard let targetID else {
+      return false
+    }
+
+    selectedIDs = [targetID]
+    focusedID = targetID
+    selectionAnchorID = targetID
+    return true
+  }
+
   func handleClick(
     on id: String,
     orderedIDs: [String],
@@ -293,13 +312,32 @@ final class ClipViewState: ObservableObject {
     }
 
     if modifiers.contains(.command) {
+      let previousAnchorID = selectionAnchorID.flatMap { orderedIDs.contains($0) ? $0 : nil }
+        ?? orderedIDs.first(where: { selectedIDs.contains($0) })
+        ?? id
+
       if selectedIDs.contains(id) {
         selectedIDs.remove(id)
       } else {
         selectedIDs.insert(id)
       }
+
+      if selectedIDs.isEmpty {
+        focusedID = nil
+        selectionAnchorID = nil
+        return
+      }
+
+      if selectedIDs.count == 1, let remainingID = selectedIDs.first {
+        focusedID = remainingID
+        selectionAnchorID = remainingID
+        return
+      }
+
       focusedID = id
-      selectionAnchorID = id
+      selectionAnchorID = selectedIDs.contains(previousAnchorID)
+        ? previousAnchorID
+        : orderedIDs.first(where: { selectedIDs.contains($0) })
       return
     }
 

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import UniformTypeIdentifiers
 
 @MainActor
 enum AppPaths {
@@ -314,6 +315,9 @@ final class AppState: ObservableObject {
 
     switch action {
     case .closePopup:
+      if uiState.collapseSelectionToAnchor() {
+        return nil
+      }
       hidePopup()
     case .focusList:
       popupController.focusHistoryList()
@@ -349,6 +353,19 @@ final class AppState: ObservableObject {
       deleteSelection(permanently: true)
     }
     return nil
+  }
+
+  func handlePopupMouseDown(_ event: NSEvent) -> NSEvent? {
+    guard
+      isPopupVisible,
+      event.window === popupController.currentWindow,
+      event.type == .leftMouseDown
+    else {
+      return event
+    }
+
+    popupController.activateHistoryListIfNeeded(for: event)
+    return event
   }
 
   private func shouldBypassDeleteShortcut() -> Bool {
@@ -424,8 +441,10 @@ final class AppState: ObservableObject {
 
     let panel = NSSavePanel()
     panel.canCreateDirectories = true
-    panel.allowedContentTypes = [.png]
-    panel.nameFieldStringValue = defaultExportName(for: item, fallback: "Image") + ".png"
+    let ext = sourceURL.pathExtension.lowercased()
+    let contentType = UTType(filenameExtension: ext) ?? .png
+    panel.allowedContentTypes = [contentType]
+    panel.nameFieldStringValue = defaultExportName(for: item, fallback: "Image") + ".\(ext.isEmpty ? "png" : ext)"
 
     guard panel.runModal() == .OK, let destinationURL = panel.url else {
       return
