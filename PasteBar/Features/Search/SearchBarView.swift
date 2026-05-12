@@ -9,7 +9,9 @@ struct SearchBarView: View {
     PopupAwareSearchField(
       text: $uiState.searchQuery,
       focusNonce: appState.searchFocusNonce,
-      handlePopupKeyDown: appState.handlePopupKeyDown
+      handlePopupKeyDown: appState.handlePopupKeyDown,
+      moveFocus: uiState.moveFocus,
+      moveFocusExtendingSelection: uiState.moveFocusExtendingSelection
     )
     .frame(height: 38)
     .onChange(of: uiState.searchQuery) { _, _ in
@@ -22,9 +24,15 @@ private struct PopupAwareSearchField: NSViewRepresentable {
   @Binding var text: String
   let focusNonce: Int
   let handlePopupKeyDown: (NSEvent) -> NSEvent?
+  let moveFocus: (Int) -> Void
+  let moveFocusExtendingSelection: (Int) -> Void
 
   func makeCoordinator() -> Coordinator {
-    Coordinator(text: $text)
+    Coordinator(
+      text: $text,
+      moveFocus: moveFocus,
+      moveFocusExtendingSelection: moveFocusExtendingSelection
+    )
   }
 
   func makeNSView(context: Context) -> PopupAwareNSSearchField {
@@ -50,10 +58,18 @@ private struct PopupAwareSearchField: NSViewRepresentable {
 
   final class Coordinator: NSObject, NSSearchFieldDelegate {
     @Binding private var text: String
+    private let moveFocus: (Int) -> Void
+    private let moveFocusExtendingSelection: (Int) -> Void
     private var lastFocusNonce: Int?
 
-    init(text: Binding<String>) {
+    init(
+      text: Binding<String>,
+      moveFocus: @escaping (Int) -> Void,
+      moveFocusExtendingSelection: @escaping (Int) -> Void
+    ) {
       _text = text
+      self.moveFocus = moveFocus
+      self.moveFocusExtendingSelection = moveFocusExtendingSelection
     }
 
     func controlTextDidChange(_ notification: Notification) {
@@ -70,6 +86,29 @@ private struct PopupAwareSearchField: NSViewRepresentable {
       lastFocusNonce = nonce
       DispatchQueue.main.async {
         field.window?.makeFirstResponder(field)
+      }
+    }
+
+    func control(
+      _ control: NSControl,
+      textView: NSTextView,
+      doCommandBy commandSelector: Selector
+    ) -> Bool {
+      switch commandSelector {
+      case #selector(NSResponder.moveUp(_:)):
+        moveFocus(-1)
+        return true
+      case #selector(NSResponder.moveDown(_:)):
+        moveFocus(1)
+        return true
+      case #selector(NSResponder.moveUpAndModifySelection(_:)):
+        moveFocusExtendingSelection(-1)
+        return true
+      case #selector(NSResponder.moveDownAndModifySelection(_:)):
+        moveFocusExtendingSelection(1)
+        return true
+      default:
+        return false
       }
     }
   }
