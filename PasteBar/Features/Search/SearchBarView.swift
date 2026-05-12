@@ -9,7 +9,6 @@ struct SearchBarView: View {
     PopupAwareSearchField(
       text: $uiState.searchQuery,
       focusNonce: appState.searchFocusNonce,
-      handlePopupKeyDown: appState.handlePopupKeyDown,
       moveFocus: uiState.moveFocus,
       moveFocusExtendingSelection: uiState.moveFocusExtendingSelection,
       moveSelectionBlock: appState.moveSelectionShortcut
@@ -24,7 +23,6 @@ struct SearchBarView: View {
 private struct PopupAwareSearchField: NSViewRepresentable {
   @Binding var text: String
   let focusNonce: Int
-  let handlePopupKeyDown: (NSEvent) -> NSEvent?
   let moveFocus: (Int) -> Void
   let moveFocusExtendingSelection: (Int) -> Void
   let moveSelectionBlock: (Int) -> Void
@@ -41,7 +39,6 @@ private struct PopupAwareSearchField: NSViewRepresentable {
   func makeNSView(context: Context) -> PopupAwareNSSearchField {
     let field = PopupAwareNSSearchField()
     field.delegate = context.coordinator
-    field.handlePopupKeyDown = handlePopupKeyDown
     field.font = .systemFont(ofSize: 20)
     field.controlSize = .large
     field.focusRingType = .default
@@ -52,7 +49,6 @@ private struct PopupAwareSearchField: NSViewRepresentable {
   }
 
   func updateNSView(_ field: PopupAwareNSSearchField, context: Context) {
-    field.handlePopupKeyDown = handlePopupKeyDown
     if field.stringValue != text {
       field.stringValue = text
     }
@@ -126,13 +122,4 @@ private struct PopupAwareSearchField: NSViewRepresentable {
   }
 }
 
-private final class PopupAwareNSSearchField: NSSearchField {
-  var handlePopupKeyDown: ((NSEvent) -> NSEvent?)?
-
-  override func keyDown(with event: NSEvent) {
-    if handlePopupKeyDown?(event) == nil {
-      return
-    }
-    super.keyDown(with: event)
-  }
-}
+private final class PopupAwareNSSearchField: NSSearchField {}
