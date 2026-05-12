@@ -138,6 +138,14 @@ final class AppState: ObservableObject {
     popupController.show(with: self)
   }
 
+  func activatePopup() {
+    if isPopupVisible {
+      popupController.show(with: self)
+      return
+    }
+    showPopup()
+  }
+
   func hidePopup() {
     popupController.hide()
     isPopupVisible = false

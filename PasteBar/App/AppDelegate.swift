@@ -13,4 +13,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     return true
   }
+
+  func applicationDidBecomeActive(_ notification: Notification) {
+    Task { @MainActor [weak self] in
+      self?.appState?.activatePopup()
+    }
+  }
 }
