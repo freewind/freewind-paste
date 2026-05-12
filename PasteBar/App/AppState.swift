@@ -411,7 +411,7 @@ final class AppState: ObservableObject {
 
     switch action {
     case .focusPrevious, .focusNext, .expandPrevious, .expandNext, .moveSelectionUp, .moveSelectionDown:
-      return true
+      return !responder.isFieldEditor
     default:
       return false
     }
