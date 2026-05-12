@@ -115,6 +115,11 @@ final class AppState: ObservableObject {
     popupController.show(with: self)
   }
 
+  func hidePopup() {
+    popupController.hide()
+    isPopupVisible = false
+  }
+
   func openSettings() {
     refreshAccessibilityStatus()
     settingsWindowController.show(with: self)
@@ -158,6 +163,7 @@ final class AppState: ObservableObject {
     case (.nativeShiftEnter, false):
       statusMessage = "Native pasted"
     }
+    hidePopup()
   }
 
   func updateSettings(_ mutate: (inout AppSettings) -> Void) {

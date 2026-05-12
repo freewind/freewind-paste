@@ -28,6 +28,13 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
     appState.isPopupVisible = true
   }
 
+  func hide() {
+    guard let window else {
+      return
+    }
+    window.orderOut(nil)
+  }
+
   private func makeWindow(appState: AppState) -> NSWindow {
     let root = HistoryView()
       .environmentObject(appState)
@@ -50,9 +57,6 @@ final class PopupWindowController: NSObject, NSWindowDelegate {
   }
 
   func windowWillClose(_ notification: Notification) {
-    guard let window else {
-      return
-    }
-    window.orderOut(nil)
+    hide()
   }
 }
