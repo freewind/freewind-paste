@@ -239,7 +239,13 @@ final class ClipStore: ObservableObject {
     let cutoff = now.addingTimeInterval(-Double(days) * 24 * 60 * 60)
     let oldCount = items.count
     items.removeAll { item in
-      !item.favorite && item.createdAt < cutoff
+      guard !item.favorite else {
+        return false
+      }
+      if let trashedAt = item.trashedAt {
+        return trashedAt < cutoff
+      }
+      return item.createdAt < cutoff
     }
     return items.count != oldCount
   }
@@ -268,6 +274,7 @@ final class ClipStore: ObservableObject {
         return false
       }
       var next = item
+      next.favorite = false
       next.trashedAt = now
       next.updatedAt = now
       trashed.append(next)
