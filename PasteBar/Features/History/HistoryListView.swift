@@ -12,101 +12,90 @@ struct HistoryListView: View {
   var body: some View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 0) {
-        ForEach(uiState.groupedVisibleItems) { group in
-          VStack(alignment: .leading, spacing: 0) {
-            Text(group.title)
-              .font(.caption.weight(.semibold))
-              .foregroundStyle(.secondary)
-              .padding(.horizontal, 12)
-              .padding(.top, 8)
-              .padding(.bottom, 4)
+        ForEach(uiState.visibleItems) { item in
+          NativeClickableRow(
+            itemID: item.id,
+            registry: rowRegistry,
+            content: AnyView(
+              HistoryRowView(
+                item: item,
+                isDragActive: draggedItemID != nil,
+                isDragged: draggedItemID == item.id,
+                dropLine: dropLine(for: item.id)
+              )
+            ),
+            onClick: { event in
+              uiState.handleClick(
+                on: item.id,
+                orderedIDs: uiState.visibleItems.map(\.id),
+                modifiers: event.modifierFlags
+              )
+            },
+            onDoubleClick: {
+              if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+                uiState.handleClick(
+                  on: item.id,
+                  orderedIDs: uiState.visibleItems.map(\.id),
+                  modifiers: []
+                )
+              }
+              appState.pasteSelection(mode: .normalEnter)
+            }
+          )
+            .id(item.id)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .contextMenu {
+              let targetIDs = contextTargetIDs(for: item)
+              let isMultiTarget = targetIDs.count > 1
 
-            ForEach(group.items) { item in
-              NativeClickableRow(
-                itemID: item.id,
-                registry: rowRegistry,
-                content: AnyView(
-                  HistoryRowView(
-                    item: item,
-                    isDragActive: draggedItemID != nil,
-                    isDragged: draggedItemID == item.id,
-                    dropLine: dropLine(for: item.id)
-                  )
-                ),
-                onClick: { event in
-                  uiState.handleClick(
-                    on: item.id,
-                    orderedIDs: uiState.visibleItems.map(\.id),
-                    modifiers: event.modifierFlags
-                  )
-                },
-                onDoubleClick: {
-                  if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
-                    uiState.handleClick(
-                      on: item.id,
-                      orderedIDs: uiState.visibleItems.map(\.id),
-                      modifiers: []
-                    )
-                  }
-                  appState.pasteSelection(mode: .normalEnter)
+              if uiState.currentTab != .trash {
+                Button("Paste") {
+                  appState.paste(targetIDs, mode: .normalEnter)
+                }
+
+                Divider()
+
+                Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
+                  appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
+                }
+                Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
+                  appState.promptForLabel(for: item.id)
+                }
+                .disabled(isMultiTarget)
+
+                Button("Move to Trash") {
+                  appState.workflowService.delete(targetIDs, permanently: false)
+                }
+              } else {
+                Button("Restore") {
+                  appState.workflowService.restore(targetIDs)
+                }
+                Button("Delete Permanently") {
+                  appState.workflowService.delete(targetIDs, permanently: true)
+                }
+              }
+            }
+            .onDrag {
+              if !uiState.selectedIDs.contains(item.id) {
+                uiState.select([item.id])
+              }
+              draggedItemID = item.id
+              dropTarget = nil
+              return NSItemProvider(object: item.id as NSString)
+            }
+            .onDrop(
+              of: [UTType.text],
+              delegate: HistoryRowDropDelegate(
+                targetItemID: item.id,
+                groupItemIDs: uiState.visibleItems.map(\.id),
+                draggedItemID: $draggedItemID,
+                dropTarget: $dropTarget,
+                onMove: { offsets, destination in
+                  appState.moveItems(within: uiState.visibleItems.map(\.id), from: offsets, to: destination)
                 }
               )
-                .id(item.id)
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-                .contextMenu {
-                  let targetIDs = contextTargetIDs(for: item)
-                  let isMultiTarget = targetIDs.count > 1
-
-                  if uiState.currentTab != .trash {
-                    Button("Paste") {
-                      appState.paste(targetIDs, mode: .normalEnter)
-                    }
-
-                    Divider()
-
-                    Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
-                      appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
-                    }
-                    Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
-                      appState.promptForLabel(for: item.id)
-                    }
-                    .disabled(isMultiTarget)
-
-                    Button("Move to Trash") {
-                      appState.workflowService.delete(targetIDs, permanently: false)
-                    }
-                  } else {
-                    Button("Restore") {
-                      appState.workflowService.restore(targetIDs)
-                    }
-                    Button("Delete Permanently") {
-                      appState.workflowService.delete(targetIDs, permanently: true)
-                    }
-                  }
-                }
-                .onDrag {
-                  if !uiState.selectedIDs.contains(item.id) {
-                    uiState.select([item.id])
-                  }
-                  draggedItemID = item.id
-                  dropTarget = nil
-                  return NSItemProvider(object: item.id as NSString)
-                }
-                .onDrop(
-                  of: [UTType.text],
-                  delegate: HistoryRowDropDelegate(
-                    targetItemID: item.id,
-                    groupItemIDs: group.items.map(\.id),
-                    draggedItemID: $draggedItemID,
-                    dropTarget: $dropTarget,
-                    onMove: { offsets, destination in
-                      appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
-                    }
-                  )
-                )
-            }
-          }
+            )
         }
       }
     }
@@ -154,10 +143,16 @@ struct HistoryListView: View {
       return
     }
 
+    let orderedIDs = uiState.visibleItems.map(\.id)
     let reveal = uiState.consumePendingFocusedItemReveal()
     let anchor = unitPoint(for: reveal.anchor) ?? scrollAnchor(for: focusedID)
     DispatchQueue.main.async {
-      rowRegistry.reveal(itemID: focusedID, anchor: anchor, force: reveal.force || anchor != nil)
+      rowRegistry.reveal(
+        itemID: focusedID,
+        orderedIDs: orderedIDs,
+        anchor: anchor,
+        force: reveal.force || anchor != nil
+      )
     }
   }
 
@@ -278,14 +273,24 @@ private final class HistoryRowRegistry {
     views[itemID] = nil
   }
 
-  func reveal(itemID: String, anchor: UnitPoint?, force: Bool) {
+  func reveal(itemID: String, orderedIDs: [String], anchor: UnitPoint?, force: Bool) {
     cleanup()
 
     guard
-      let rowView = views[itemID]?.value,
-      let scrollView = rowView.enclosingScrollView,
+      let scrollView = orderedIDs.lazy.compactMap({ self.views[$0]?.value?.enclosingScrollView }).first,
       let documentView = scrollView.documentView
     else {
+      return
+    }
+
+    guard let rowView = views[itemID]?.value else {
+      revealMissingRow(
+        itemID: itemID,
+        orderedIDs: orderedIDs,
+        anchor: anchor,
+        scrollView: scrollView,
+        documentView: documentView
+      )
       return
     }
 
@@ -392,6 +397,93 @@ private final class HistoryRowRegistry {
     }
 
     return direction < 0 ? visibleIDs.first : visibleIDs.last
+  }
+
+  private func revealMissingRow(
+    itemID: String,
+    orderedIDs: [String],
+    anchor: UnitPoint?,
+    scrollView: NSScrollView,
+    documentView: NSView
+  ) {
+    guard
+      let targetIndex = orderedIDs.firstIndex(of: itemID),
+      let visibleRange = visibleIndexRange(orderedIDs: orderedIDs, documentView: documentView, scrollView: scrollView)
+    else {
+      return
+    }
+
+    let referenceIndex: Int
+    if anchor == .top {
+      referenceIndex = visibleRange.lowerBound
+    } else if anchor == .bottom {
+      referenceIndex = visibleRange.upperBound
+    } else if targetIndex < visibleRange.lowerBound {
+      referenceIndex = visibleRange.lowerBound
+    } else if targetIndex > visibleRange.upperBound {
+      referenceIndex = visibleRange.upperBound
+    } else {
+      return
+    }
+
+    let rowHeight = averageVisibleRowHeight(
+      orderedIDs: orderedIDs,
+      documentView: documentView,
+      scrollView: scrollView
+    ) ?? 44
+    let delta = CGFloat(targetIndex - referenceIndex) * rowHeight
+    let visibleRect = scrollView.contentView.documentVisibleRect
+    let maxY = max(documentView.bounds.height - visibleRect.height, 0)
+    var nextOrigin = visibleRect.origin
+    nextOrigin.y = min(max(visibleRect.origin.y + delta, 0), maxY)
+
+    guard abs(nextOrigin.y - visibleRect.origin.y) > 0.5 else {
+      return
+    }
+
+    scrollView.contentView.scroll(to: nextOrigin)
+    scrollView.reflectScrolledClipView(scrollView.contentView)
+  }
+
+  private func visibleIndexRange(
+    orderedIDs: [String],
+    documentView: NSView,
+    scrollView: NSScrollView
+  ) -> ClosedRange<Int>? {
+    let visibleRect = scrollView.contentView.documentVisibleRect
+    let visibleIndexes = orderedIDs.enumerated().compactMap { entry -> Int? in
+      let (index, itemID) = entry
+      guard let rowView = views[itemID]?.value else {
+        return nil
+      }
+      let rowFrame = rowView.convert(rowView.bounds, to: documentView)
+      return rowFrame.intersects(visibleRect) ? index : nil
+    }
+
+    guard let first = visibleIndexes.first, let last = visibleIndexes.last else {
+      return nil
+    }
+    return first...last
+  }
+
+  private func averageVisibleRowHeight(
+    orderedIDs: [String],
+    documentView: NSView,
+    scrollView: NSScrollView
+  ) -> CGFloat? {
+    let visibleRect = scrollView.contentView.documentVisibleRect
+    let heights = orderedIDs.compactMap { itemID -> CGFloat? in
+      guard let rowView = views[itemID]?.value else {
+        return nil
+      }
+      let rowFrame = rowView.convert(rowView.bounds, to: documentView)
+      return rowFrame.intersects(visibleRect) ? rowFrame.height : nil
+    }
+
+    guard !heights.isEmpty else {
+      return nil
+    }
+    return heights.reduce(0, +) / CGFloat(heights.count)
   }
 
   private func cleanup() {

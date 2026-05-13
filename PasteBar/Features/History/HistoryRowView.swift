@@ -98,8 +98,12 @@ struct HistoryRowView: View {
 
   @ViewBuilder
   private var rowBackground: some View {
-    Rectangle()
-      .fill(backgroundColor)
+    ZStack {
+      Rectangle()
+        .fill(toneColor)
+      Rectangle()
+        .fill(stateOverlayColor)
+    }
   }
 
   @ViewBuilder
@@ -110,7 +114,19 @@ struct HistoryRowView: View {
       .padding(.horizontal, 2)
   }
 
-  private var backgroundColor: Color {
+  private var toneColor: Color {
+    let base = Color(nsColor: .controlBackgroundColor)
+    switch DateGroup.title(for: item.groupingDate) {
+    case "Today":
+      return base
+    case "Yesterday":
+      return base.opacity(0.72)
+    default:
+      return base.opacity(0.48)
+    }
+  }
+
+  private var stateOverlayColor: Color {
     if isDragged {
       return Color.accentColor.opacity(0.10)
     }
