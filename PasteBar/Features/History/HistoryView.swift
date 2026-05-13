@@ -1,10 +1,12 @@
 import SwiftUI
 
 struct HistoryView: View {
-  @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var uiState: ClipViewState
+  @Environment(AppState.self) private var appState
+  @Environment(ClipViewState.self) private var uiState
 
   var body: some View {
+    @Bindable var uiState = uiState
+
     VStack(spacing: 0) {
       header
 
@@ -54,11 +56,13 @@ struct HistoryView: View {
   }
 
   private var header: some View {
-    HStack(spacing: 10) {
+    @Bindable var uiState = uiState
+
+    return HStack(spacing: 10) {
       SearchBarView()
 
       HStack(spacing: 6) {
-          Picker("Type", selection: $uiState.kindFilter) {
+        Picker("Type", selection: $uiState.kindFilter) {
           ForEach(ClipKindFilter.allCases, id: \.self) { filter in
             Text(filter.title).tag(filter)
           }

@@ -2,10 +2,12 @@ import AppKit
 import SwiftUI
 
 struct SearchBarView: View {
-  @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var uiState: ClipViewState
+  @Environment(AppState.self) private var appState
+  @Environment(ClipViewState.self) private var uiState
 
   var body: some View {
+    @Bindable var uiState = uiState
+
     PopupAwareSearchField(
       text: $uiState.searchQuery,
       focusNonce: appState.searchFocusNonce

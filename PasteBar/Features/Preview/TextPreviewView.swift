@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TextPreviewView: View {
-  @EnvironmentObject private var appState: AppState
+  @Environment(AppState.self) private var appState
   let item: ClipItem
   var showsHeader: Bool = true
   var showsMetrics: Bool = true

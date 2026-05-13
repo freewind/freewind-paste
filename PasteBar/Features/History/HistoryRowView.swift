@@ -7,8 +7,8 @@ struct HistoryRowView: View {
     case after
   }
 
-  @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var uiState: ClipViewState
+  @Environment(AppState.self) private var appState
+  @Environment(ClipViewState.self) private var uiState
   let item: ClipItem
   var isDragActive: Bool = false
   var isDragged: Bool = false
@@ -66,9 +66,9 @@ struct HistoryRowView: View {
     Button {
       uiState.toggleChecked(item.id)
     } label: {
-      Image(systemName: uiState.checkedIDs.contains(item.id) ? "checkmark.square.fill" : "square")
+      Image(systemName: uiState.isChecked(item.id) ? "checkmark.square.fill" : "square")
         .font(.system(size: 11))
-        .foregroundStyle(uiState.checkedIDs.contains(item.id) ? Color.accentColor : Color.secondary)
+        .foregroundStyle(uiState.isChecked(item.id) ? Color.accentColor : Color.secondary)
         .frame(width: 12, height: 12)
     }
     .buttonStyle(.plain)
@@ -131,11 +131,11 @@ struct HistoryRowView: View {
       return .clear
     }
 
-    if uiState.focusedID == item.id {
+    if uiState.isFocused(item.id) {
       return Color.accentColor.opacity(0.16)
     }
 
-    if uiState.selectedIDs.contains(item.id) {
+    if uiState.isSelected(item.id) {
       return Color.accentColor.opacity(0.10)
     }
 

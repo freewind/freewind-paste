@@ -21,9 +21,8 @@ final class SettingsWindowController {
 
   private func makeWindow(appState: AppState) -> NSWindow {
     let root = SettingsView()
-      .environmentObject(appState)
-      .environmentObject(appState.uiState)
-      .environmentObject(appState.store)
+      .environment(appState)
+      .environment(appState.uiState)
 
     let hostingView = NSHostingView(rootView: root)
     let window = NSWindow(

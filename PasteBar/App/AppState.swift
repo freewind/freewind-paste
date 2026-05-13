@@ -1,6 +1,6 @@
 import AppKit
-import Combine
 import Foundation
+import Observation
 import UniformTypeIdentifiers
 
 @MainActor
@@ -10,31 +10,34 @@ enum AppPaths {
 }
 
 @MainActor
-final class AppState: ObservableObject {
-  let store: ClipStore
-  let uiState: ClipViewState
-  @Published var settings: AppSettings
-  @Published var statusMessage: String
-  @Published var isPopupVisible: Bool
-  @Published var searchFocusNonce: Int
-  @Published var imageOutputMode: ImageOutputMode
-  @Published var imageLowResMaxDimension: Double
-  @Published var accessibilityGranted: Bool
+@Observable
+final class AppState {
+  @ObservationIgnored let store: ClipStore
+  @ObservationIgnored let uiState: ClipViewState
 
-  let repository: ClipRepository
-  let imageAssetStore: ImageAssetStore
-  let captureService: ClipboardCaptureService
-  let pasteService: ClipboardPasteService
-  let workflowService: ClipWorkflowService
-  let accessibilityAccess: AccessibilityPasteTrigger
-  let hotkeyService: HotkeyService
-  let launchAtLoginService: LaunchAtLoginService
-  let popupController: PopupWindowController
-  let transientImagePreviewController: TransientImagePreviewController
-  let settingsWindowController: SettingsWindowController
-  let menuBarController: MenuBarController
-  private var isBootstrapped = false
-  private var pasteTargetApp: NSRunningApplication?
+  var settings: AppSettings
+  var statusMessage: String
+  var isPopupVisible: Bool
+  var searchFocusNonce: Int
+  var imageOutputMode: ImageOutputMode
+  var imageLowResMaxDimension: Double
+  var accessibilityGranted: Bool
+
+  @ObservationIgnored let repository: ClipRepository
+  @ObservationIgnored let imageAssetStore: ImageAssetStore
+  @ObservationIgnored let captureService: ClipboardCaptureService
+  @ObservationIgnored let pasteService: ClipboardPasteService
+  @ObservationIgnored private let workflow: ClipWorkflowService
+  @ObservationIgnored private let accessibilityAccess: AccessibilityPasteTrigger
+  @ObservationIgnored private let hotkeyService: HotkeyService
+  @ObservationIgnored private let launchAtLoginService: LaunchAtLoginService
+  @ObservationIgnored let popupController: PopupWindowController
+  @ObservationIgnored private let transientImagePreviewController: TransientImagePreviewController
+  @ObservationIgnored private let settingsWindowController: SettingsWindowController
+  @ObservationIgnored private let menuBarController: MenuBarController
+
+  @ObservationIgnored private var isBootstrapped = false
+  @ObservationIgnored private var pasteTargetApp: NSRunningApplication?
 
   init(
     persistence: ClipPersistence? = nil,
@@ -70,11 +73,12 @@ final class AppState: ObservableObject {
     self.transientImagePreviewController = transientImagePreviewController
     self.settingsWindowController = settingsWindowController
     self.menuBarController = menuBarController
+
     let loadedSettings = repository.loadSettings()
     settings = loadedSettings
     store = ClipStore(items: repository.loadItems())
     uiState = ClipViewState(store: store)
-    workflowService = ClipWorkflowService(
+    workflow = ClipWorkflowService(
       store: store,
       uiState: uiState,
       repository: repository,
@@ -86,8 +90,8 @@ final class AppState: ObservableObject {
     imageOutputMode = .original
     imageLowResMaxDimension = 512
     accessibilityGranted = accessibilityAccess.isPermissionGranted()
-    workflowService.pruneStaleItems()
-    workflowService.bootstrap()
+    workflow.pruneStaleItems()
+    workflow.bootstrap()
   }
 
   func bootstrapIfNeeded() {
@@ -121,7 +125,7 @@ final class AppState: ObservableObject {
 
     captureService.start { [weak self] item in
       Task { @MainActor [weak self] in
-        self?.workflowService.capture(item, preserveCurrentSelection: self?.isPopupVisible == true)
+        self?.workflow.capture(item, preserveCurrentSelection: self?.isPopupVisible == true)
         self?.statusMessage = "Captured \(item.kind.rawValue)"
       }
     }
@@ -161,17 +165,17 @@ final class AppState: ObservableObject {
     alert.addButton(withTitle: "Save")
     alert.addButton(withTitle: "Cancel")
 
-    let field = NSTextField(string: workflowService.labelValue(for: id))
+    let field = NSTextField(string: workflow.labelValue(for: id))
     field.frame = NSRect(x: 0, y: 0, width: 280, height: 24)
     alert.accessoryView = field
 
     if alert.runModal() == .alertFirstButtonReturn {
-      workflowService.updateLabel(for: id, label: field.stringValue)
+      workflow.updateLabel(for: id, label: field.stringValue)
     }
   }
 
   func pasteSelection(mode: PasteMode) {
-    if let message = workflowService.pasteSelection(
+    if let message = workflow.pasteSelection(
       mode: mode,
       imageOutputMode: imageOutputMode,
       imageMaxDimension: imageLowResMaxDimension,
@@ -182,7 +186,7 @@ final class AppState: ObservableObject {
   }
 
   func paste(_ ids: Set<String>, mode: PasteMode) {
-    if let message = workflowService.paste(
+    if let message = workflow.paste(
       ids: ids,
       mode: mode,
       imageOutputMode: imageOutputMode,
@@ -193,30 +197,29 @@ final class AppState: ObservableObject {
     }
   }
 
-  private func handlePasteResult(_ message: String) {
-    statusMessage = message
-    if message.hasPrefix("Pasted") || message.hasPrefix("Native pasted") {
-      hidePopup()
-    }
-  }
-
   func deleteSelection(permanently: Bool) {
-    workflowService.delete(uiState.selectedIDs, permanently: permanently)
-    statusMessage = permanently ? "Deleted permanently" : "Moved to trash"
+    delete(uiState.selectedIDs, permanently: permanently)
   }
 
   func deleteCheckedVisible(permanently: Bool) {
-    workflowService.delete(Set(uiState.checkedVisibleItems.map(\.id)), permanently: permanently)
+    delete(Set(uiState.checkedVisibleItems.map(\.id)), permanently: permanently)
+  }
+
+  func delete(_ ids: Set<String>, permanently: Bool) {
+    workflow.delete(ids, permanently: permanently)
     statusMessage = permanently ? "Deleted permanently" : "Moved to trash"
   }
 
   func restoreSelection() {
-    workflowService.restore(uiState.selectedIDs)
-    statusMessage = "Restored"
+    restore(uiState.selectedIDs)
   }
 
   func restore(_ id: String) {
-    workflowService.restore([id])
+    restore(Set([id]))
+  }
+
+  func restore(_ ids: Set<String>) {
+    workflow.restore(ids)
     statusMessage = "Restored"
   }
 
@@ -228,12 +231,12 @@ final class AppState: ObservableObject {
   }
 
   func clearAll() {
-    workflowService.clearAll()
+    workflow.clearAll()
     statusMessage = "Cleared"
   }
 
   func copyLowResolutionImage(from item: ClipItem) {
-    if workflowService.copyLowResolutionImage(from: item, imageMaxDimension: imageLowResMaxDimension) {
+    if workflow.copyLowResolutionImage(from: item, imageMaxDimension: imageLowResMaxDimension) {
       statusMessage = "Copied low-res image"
     }
   }
@@ -286,23 +289,23 @@ final class AppState: ObservableObject {
   }
 
   func moveItems(within sectionIDs: [String], from offsets: IndexSet, to destination: Int) {
-    workflowService.moveItems(within: sectionIDs, from: offsets, to: destination)
+    workflow.moveItems(within: sectionIDs, from: offsets, to: destination)
   }
 
   func reverseSelection() {
-    workflowService.reverseSelection()
+    workflow.reverseSelection()
   }
 
   func toggleFavorite(for id: String) {
-    workflowService.toggleFavorite(for: id)
+    workflow.toggleFavorite(for: id)
   }
 
   func setFavorite(_ ids: Set<String>, favorite: Bool) {
-    workflowService.setFavorite(ids, favorite: favorite)
+    workflow.setFavorite(ids, favorite: favorite)
   }
 
   func updateText(for id: String, text: String) {
-    workflowService.updateText(
+    workflow.updateText(
       for: id,
       text: text,
       languageGuess: LanguageGuessService.guess(for: text)
@@ -402,6 +405,13 @@ final class AppState: ObservableObject {
     moveSelectionBlock(by: offset)
   }
 
+  private func handlePasteResult(_ message: String) {
+    statusMessage = message
+    if message.hasPrefix("Pasted") || message.hasPrefix("Native pasted") {
+      hidePopup()
+    }
+  }
+
   private func shouldBypassDeleteShortcut() -> Bool {
     guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
       return false
@@ -476,14 +486,14 @@ final class AppState: ObservableObject {
       return
     }
 
-    let visibleIDs = uiState.visibleItems.map(\.id)
+    let visibleIDs = uiState.visibleItemIDs
     let movingIDs = visibleIDs.filter { uiState.selectedIDs.contains($0) }
 
     guard !movingIDs.isEmpty else {
       return
     }
 
-    if !workflowService.moveSelectionBlock(within: visibleIDs, itemIDs: movingIDs, by: offset) {
+    if !workflow.moveSelectionBlock(within: visibleIDs, itemIDs: movingIDs, by: offset) {
       return
     }
 

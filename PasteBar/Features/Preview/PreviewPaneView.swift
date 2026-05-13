@@ -15,13 +15,15 @@ struct PreviewPaneView: View {
     }
   }
 
-  @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var uiState: ClipViewState
+  @Environment(AppState.self) private var appState
+  @Environment(ClipViewState.self) private var uiState
   @State private var multiSelectionMode: MultiSelectionPreviewMode = .split
   @State private var mergedDraftText: String = ""
   @State private var mergedSelectionSignature: String = ""
 
   var body: some View {
+    @Bindable var appState = appState
+
     VStack(alignment: .leading, spacing: 12) {
       if showsToolbar {
         HStack(spacing: 10) {

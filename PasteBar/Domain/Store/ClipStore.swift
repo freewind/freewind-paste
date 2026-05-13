@@ -1,9 +1,10 @@
-import Combine
 import Foundation
+import Observation
 
 @MainActor
-final class ClipStore: ObservableObject {
-  @Published var items: [ClipItem]
+@Observable
+final class ClipStore {
+  var items: [ClipItem]
 
   init(items: [ClipItem] = []) {
     self.items = items
@@ -92,59 +93,6 @@ final class ClipStore: ObservableObject {
     reorderItems(within: sectionIDs, newVisibleOrder: newVisibleOrder)
     mergeMovedItemsIntoNeighborGroup(itemIDs: movingIDs, neighborID: targetNeighborID)
     return true
-  }
-
-  private func reorderItems(within sectionIDs: [String], newVisibleOrder: [String]) {
-    let visibleIDSet = Set(sectionIDs)
-    let anchored = items.filter { !visibleIDSet.contains($0.id) }
-    let reordered = newVisibleOrder.compactMap { id in
-      items.first(where: { $0.id == id })
-    }
-
-    var result: [ClipItem] = []
-    var reorderedIndex = 0
-    var anchoredIndex = 0
-
-    for item in items {
-      if visibleIDSet.contains(item.id) {
-        result.append(reordered[reorderedIndex])
-        reorderedIndex += 1
-      } else {
-        result.append(anchored[anchoredIndex])
-        anchoredIndex += 1
-      }
-    }
-
-    items = result
-  }
-
-  private func mergeMovedItemsIntoNeighborGroup(itemIDs: [String], neighborID: String) {
-    guard let neighbor = item(for: neighborID) else {
-      return
-    }
-
-    let targetDate = neighbor.groupingDate
-    let targetGroup = DateGroup.title(for: targetDate)
-    let movingSet = Set(itemIDs)
-    var next = items
-    var changed = false
-
-    for index in next.indices where movingSet.contains(next[index].id) {
-      guard DateGroup.title(for: next[index].groupingDate) != targetGroup else {
-        continue
-      }
-
-      if next[index].isTrashed {
-        next[index].trashedAt = targetDate
-      } else {
-        next[index].updatedAt = targetDate
-      }
-      changed = true
-    }
-
-    if changed {
-      items = next
-    }
   }
 
   func reverseItems(_ ids: [String]) {
@@ -258,33 +206,68 @@ final class ClipStore: ObservableObject {
     guard !ids.isEmpty else {
       return
     }
+
     if permanently {
-      hardDelete(ids)
-    } else {
-      moveToTrash(ids)
+      items.removeAll { ids.contains($0.id) }
+      return
     }
-  }
 
-  private func moveToTrash(_ ids: Set<String>) {
     let now = Date.now
-    var trashed: [ClipItem] = []
-
-    items.removeAll { item in
-      guard ids.contains(item.id) else {
-        return false
-      }
-      var next = item
-      next.favorite = false
-      next.trashedAt = now
-      next.updatedAt = now
-      trashed.append(next)
-      return true
+    for index in items.indices where ids.contains(items[index].id) {
+      items[index].trashedAt = now
     }
-
-    items.insert(contentsOf: trashed, at: 0)
   }
 
-  private func hardDelete(_ ids: Set<String>) {
-    items.removeAll { ids.contains($0.id) }
+  private func reorderItems(within sectionIDs: [String], newVisibleOrder: [String]) {
+    let visibleIDSet = Set(sectionIDs)
+    let anchored = items.filter { !visibleIDSet.contains($0.id) }
+    let reordered = newVisibleOrder.compactMap { id in
+      items.first(where: { $0.id == id })
+    }
+
+    var result: [ClipItem] = []
+    var reorderedIndex = 0
+    var anchoredIndex = 0
+
+    for item in items {
+      if visibleIDSet.contains(item.id) {
+        result.append(reordered[reorderedIndex])
+        reorderedIndex += 1
+      } else {
+        result.append(anchored[anchoredIndex])
+        anchoredIndex += 1
+      }
+    }
+
+    items = result
+  }
+
+  private func mergeMovedItemsIntoNeighborGroup(itemIDs: [String], neighborID: String) {
+    guard let neighbor = item(for: neighborID) else {
+      return
+    }
+
+    let targetDate = neighbor.groupingDate
+    let targetGroup = DateGroup.title(for: targetDate)
+    let movingSet = Set(itemIDs)
+    var next = items
+    var changed = false
+
+    for index in next.indices where movingSet.contains(next[index].id) {
+      guard DateGroup.title(for: next[index].groupingDate) != targetGroup else {
+        continue
+      }
+
+      if next[index].isTrashed {
+        next[index].trashedAt = targetDate
+      } else {
+        next[index].updatedAt = targetDate
+      }
+      changed = true
+    }
+
+    if changed {
+      items = next
+    }
   }
 }

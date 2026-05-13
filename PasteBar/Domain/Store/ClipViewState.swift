@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Observation
 
 enum MainTab: String, CaseIterable {
   case history
@@ -47,7 +48,8 @@ enum ImageOutputMode: String, CaseIterable {
 }
 
 @MainActor
-final class ClipViewState: ObservableObject {
+@Observable
+final class ClipViewState {
   enum VisibleCheckedState {
     case none
     case partial
@@ -67,13 +69,13 @@ final class ClipViewState: ObservableObject {
 
   let store: ClipStore
 
-  @Published var selectedIDs: Set<String>
-  @Published var checkedIDs: Set<String>
-  @Published var focusedID: String?
-  @Published var currentTab: MainTab
-  @Published var searchQuery: String
-  @Published var kindFilter: ClipKindFilter
-  @Published private(set) var pageMoveRequestID: Int
+  var selectedIDs: Set<String>
+  var checkedIDs: Set<String>
+  var focusedID: String?
+  var currentTab: MainTab
+  var searchQuery: String
+  var kindFilter: ClipKindFilter
+  private(set) var pageMoveRequestID: Int
   var selectionAnchorID: String?
   private var pendingPageMoveDirection: Int
 
@@ -140,6 +142,10 @@ final class ClipViewState: ObservableObject {
       }
   }
 
+  var visibleItemIDs: [String] {
+    visibleItems.map(\.id)
+  }
+
   var focusedItem: ClipItem? {
     if let focusedID, let item = visibleItems.first(where: { $0.id == focusedID }) {
       return item
@@ -173,8 +179,25 @@ final class ClipViewState: ObservableObject {
     return .partial
   }
 
+  func isSelected(_ id: String) -> Bool {
+    selectedIDs.contains(id)
+  }
+
+  func isChecked(_ id: String) -> Bool {
+    checkedIDs.contains(id)
+  }
+
+  func isFocused(_ id: String) -> Bool {
+    focusedID == id
+  }
+
+  func allFavorites(in ids: Set<String>) -> Bool {
+    let targets = store.items.filter { ids.contains($0.id) }
+    return !targets.isEmpty && targets.allSatisfy(\.favorite)
+  }
+
   func normalizeSelection() {
-    let visibleIDs = Set(visibleItems.map(\.id))
+    let visibleIDs = Set(visibleItemIDs)
     let allIDs = Set(store.items.map(\.id))
 
     selectedIDs = selectedIDs.intersection(visibleIDs)
@@ -226,7 +249,7 @@ final class ClipViewState: ObservableObject {
       return
     }
 
-    let orderedIDs = visibleItems.map(\.id)
+    let orderedIDs = visibleItemIDs
     let currentID = focusedID ?? orderedIDs.first
     let currentIndex = currentID.flatMap { orderedIDs.firstIndex(of: $0) } ?? 0
     let nextIndex = min(max(currentIndex + offset, 0), orderedIDs.count - 1)
@@ -237,7 +260,7 @@ final class ClipViewState: ObservableObject {
   }
 
   func moveFocusExtendingSelection(by offset: Int) {
-    let orderedIDs = visibleItems.map(\.id)
+    let orderedIDs = visibleItemIDs
     guard !orderedIDs.isEmpty else {
       selectedIDs.removeAll()
       focusedID = nil
@@ -310,16 +333,12 @@ final class ClipViewState: ObservableObject {
     return direction
   }
 
-  private func boundaryID(in group: GroupedItems, isStart: Bool) -> String? {
-    (isStart ? group.items.first : group.items.last)?.id
-  }
-
   func collapseSelectionToAnchor() -> Bool {
     guard selectedIDs.count > 1 else {
       return false
     }
 
-    let orderedIDs = visibleItems.map(\.id)
+    let orderedIDs = visibleItemIDs
     let targetID = selectionAnchorID.flatMap { selectedIDs.contains($0) ? $0 : nil }
       ?? orderedIDs.first(where: { selectedIDs.contains($0) })
 
@@ -399,7 +418,7 @@ final class ClipViewState: ObservableObject {
   }
 
   func setVisibleChecked(_ checked: Bool) {
-    let ids = Set(visibleItems.map(\.id))
+    let ids = Set(visibleItemIDs)
     if checked {
       checkedIDs.formUnion(ids)
     } else {
@@ -408,6 +427,10 @@ final class ClipViewState: ObservableObject {
   }
 
   func clearCheckedVisible() {
-    checkedIDs.subtract(visibleItems.map(\.id))
+    checkedIDs.subtract(visibleItemIDs)
+  }
+
+  private func boundaryID(in group: GroupedItems, isStart: Bool) -> String? {
+    (isStart ? group.items.first : group.items.last)?.id
   }
 }

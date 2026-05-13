@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct PasteBarApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-  @StateObject private var appState = AppState()
+  @State private var appState = AppState()
 
   var body: some Scene {
     WindowGroup(id: "bootstrap") {
@@ -16,9 +16,8 @@ struct PasteBarApp: App {
 
     Settings {
       SettingsView()
-        .environmentObject(appState)
-        .environmentObject(appState.uiState)
-        .environmentObject(appState.store)
+        .environment(appState)
+        .environment(appState.uiState)
         .frame(width: 520, height: 360)
     }
     .commands {

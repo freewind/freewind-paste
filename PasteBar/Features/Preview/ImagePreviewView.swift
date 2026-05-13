@@ -1,13 +1,15 @@
 import SwiftUI
 
 struct ImagePreviewView: View {
-  @EnvironmentObject private var appState: AppState
+  @Environment(AppState.self) private var appState
   let item: ClipItem
   let imageAssetStore: ImageAssetStore
   let outputMode: ImageOutputMode
   var compact: Bool = false
 
   var body: some View {
+    @Bindable var appState = appState
+
     VStack(alignment: .leading, spacing: 12) {
       if
         let path = item.content.imageAssetPath,

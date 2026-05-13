@@ -2,9 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct HistoryListView: View {
-  @EnvironmentObject private var appState: AppState
-  @EnvironmentObject private var uiState: ClipViewState
-  @EnvironmentObject private var store: ClipStore
+  @Environment(AppState.self) private var appState
+  @Environment(ClipViewState.self) private var uiState
   @State private var draggedItemID: String?
   @State private var dropTarget: HistoryDropTarget?
   @State private var rowRegistry = HistoryRowRegistry()
@@ -27,7 +26,7 @@ struct HistoryListView: View {
             onClick: { event in
               uiState.handleClick(
                 on: item.id,
-                orderedIDs: uiState.visibleItems.map(\.id),
+                orderedIDs: uiState.visibleItemIDs,
                 modifiers: event.modifierFlags
               )
             },
@@ -35,7 +34,7 @@ struct HistoryListView: View {
               if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
                 uiState.handleClick(
                   on: item.id,
-                  orderedIDs: uiState.visibleItems.map(\.id),
+                  orderedIDs: uiState.visibleItemIDs,
                   modifiers: []
                 )
               }
@@ -56,8 +55,8 @@ struct HistoryListView: View {
 
                 Divider()
 
-                Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
-                  appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
+                Button(uiState.allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
+                  appState.setFavorite(targetIDs, favorite: !uiState.allFavorites(in: targetIDs))
                 }
                 Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
                   appState.promptForLabel(for: item.id)
@@ -65,14 +64,14 @@ struct HistoryListView: View {
                 .disabled(isMultiTarget)
 
                 Button("Move to Trash") {
-                  appState.workflowService.delete(targetIDs, permanently: false)
+                  appState.delete(targetIDs, permanently: false)
                 }
               } else {
                 Button("Restore") {
-                  appState.workflowService.restore(targetIDs)
+                  appState.restore(targetIDs)
                 }
                 Button("Delete Permanently") {
-                  appState.workflowService.delete(targetIDs, permanently: true)
+                  appState.delete(targetIDs, permanently: true)
                 }
               }
             }
@@ -88,11 +87,11 @@ struct HistoryListView: View {
               of: [UTType.text],
               delegate: HistoryRowDropDelegate(
                 targetItemID: item.id,
-                groupItemIDs: uiState.visibleItems.map(\.id),
+                groupItemIDs: uiState.visibleItemIDs,
                 draggedItemID: $draggedItemID,
                 dropTarget: $dropTarget,
                 onMove: { offsets, destination in
-                  appState.moveItems(within: uiState.visibleItems.map(\.id), from: offsets, to: destination)
+                  appState.moveItems(within: uiState.visibleItemIDs, from: offsets, to: destination)
                 }
               )
             )
@@ -143,7 +142,7 @@ struct HistoryListView: View {
       return
     }
 
-    let orderedIDs = uiState.visibleItems.map(\.id)
+    let orderedIDs = uiState.visibleItemIDs
     let requestID = rowRegistry.beginScrollRequest()
     DispatchQueue.main.async {
       guard rowRegistry.isCurrentScrollRequest(requestID) else {
@@ -163,7 +162,7 @@ struct HistoryListView: View {
       return
     }
 
-    let orderedIDs = uiState.visibleItems.map(\.id)
+    let orderedIDs = uiState.visibleItemIDs
     guard !orderedIDs.isEmpty else {
       return
     }
@@ -193,11 +192,6 @@ struct HistoryListView: View {
       return uiState.selectedIDs
     }
     return [item.id]
-  }
-
-  private func allFavorites(in ids: Set<String>) -> Bool {
-    let targets = store.items.filter { ids.contains($0.id) }
-    return !targets.isEmpty && targets.allSatisfy(\.favorite)
   }
 }
 
