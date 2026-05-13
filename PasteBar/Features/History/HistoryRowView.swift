@@ -116,9 +116,9 @@ struct HistoryRowView: View {
     case "Today":
       return Color.primary
     case "Yesterday":
-      return Color.primary.opacity(0.72)
+      return Color.primary.opacity(0.8)
     default:
-      return Color.primary.opacity(0.48)
+      return Color.primary.opacity(0.6)
     }
   }
 
