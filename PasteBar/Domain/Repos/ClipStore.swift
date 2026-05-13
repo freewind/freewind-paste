@@ -235,14 +235,11 @@ final class ClipStore: ObservableObject {
     return restoredIDs
   }
 
-  func pruneExpiredTrash(olderThan days: Int = 7, now: Date = .now) -> Bool {
+  func pruneStaleNonFavorites(olderThan days: Int = 7, now: Date = .now) -> Bool {
     let cutoff = now.addingTimeInterval(-Double(days) * 24 * 60 * 60)
     let oldCount = items.count
     items.removeAll { item in
-      guard let trashedAt = item.trashedAt else {
-        return false
-      }
-      return trashedAt < cutoff
+      !item.favorite && item.createdAt < cutoff
     }
     return items.count != oldCount
   }

@@ -341,7 +341,36 @@ final class ClipWorkflowService {
     return true
   }
 
-  func commitItems() {
+  @discardableResult
+  func pruneStaleItems() -> Bool {
+    guard store.pruneStaleNonFavorites() else {
+      return false
+    }
+    syncSelectionAfterStorePrune()
     repository.commitItems(store.items)
+    return true
+  }
+
+  func commitItems() {
+    if store.pruneStaleNonFavorites() {
+      syncSelectionAfterStorePrune()
+    }
+    repository.commitItems(store.items)
+  }
+
+  private func syncSelectionAfterStorePrune() {
+    let liveIDs = Set(store.items.map(\.id))
+    uiState.selectedIDs.formIntersection(liveIDs)
+    uiState.checkedIDs.formIntersection(liveIDs)
+
+    if let focusedID = uiState.focusedID, !liveIDs.contains(focusedID) {
+      uiState.focusedID = nil
+    }
+
+    if let anchorID = uiState.selectionAnchorID, !liveIDs.contains(anchorID) {
+      uiState.selectionAnchorID = nil
+    }
+
+    uiState.normalizeSelection()
   }
 }

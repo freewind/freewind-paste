@@ -86,9 +86,7 @@ final class AppState: ObservableObject {
     imageOutputMode = .original
     imageLowResMaxDimension = 512
     accessibilityGranted = accessibilityAccess.isPermissionGranted()
-    if store.pruneExpiredTrash() {
-      workflowService.commitItems()
-    }
+    workflowService.pruneStaleItems()
     workflowService.bootstrap()
   }
 
