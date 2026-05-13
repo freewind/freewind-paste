@@ -14,7 +14,6 @@ struct TextPreviewView: View {
   @State private var draftText: String = ""
   @State private var isSyncingFromItem = false
   @State private var saveTask: Task<Void, Never>?
-  @State private var editorHeight: CGFloat = 44
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -28,26 +27,21 @@ struct TextPreviewView: View {
         }
       }
 
-      AutoSizingEditableTextView(
-        text: $draftText,
-        identity: item.id,
-        measuredHeight: $editorHeight,
-        minHeight: minEditorHeight,
-        maxHeight: maxEditorHeight,
-        allowsScrolling: allowsScrolling
-      )
-      .frame(maxWidth: .infinity)
-      .frame(
-        minHeight: expandsToFill ? max(editorHeight, minEditorHeight) : editorHeight,
-        maxHeight: expandsToFill ? .infinity : editorHeight,
-        alignment: .topLeading
-      )
-      .background(Color(NSColor.textBackgroundColor))
-      .clipShape(RoundedRectangle(cornerRadius: 8))
-      .onAppear { syncFromItem() }
-      .onChange(of: item.id) { _, _ in syncFromItem() }
-      .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
-      .onDisappear { handleDisappear() }
+      TextEditor(text: $draftText)
+        .font(.system(size: 14))
+        .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity)
+        .frame(
+          minHeight: expandsToFill ? max(minEditorHeight, 180) : minEditorHeight,
+          maxHeight: expandsToFill ? .infinity : maxEditorHeight,
+          alignment: .topLeading
+        )
+        .background(Color(NSColor.textBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .onAppear { syncFromItem() }
+        .onChange(of: item.id) { _, _ in syncFromItem() }
+        .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
+        .onDisappear { handleDisappear() }
 
       if showsMetrics {
         HStack(spacing: 6) {
@@ -99,137 +93,152 @@ struct TextPreviewView: View {
   }
 }
 
-private struct AutoSizingEditableTextView: NSViewRepresentable {
-  @Binding var text: String
-  let identity: String
-  @Binding var measuredHeight: CGFloat
-  let minHeight: CGFloat
-  let maxHeight: CGFloat
-  let allowsScrolling: Bool
+struct AutoGrowingTextPreviewView: View {
+  private static let placeholderCharacter = "\u{200B}"
 
-  func makeCoordinator() -> Coordinator {
-    Coordinator(self)
+  @Environment(AppState.self) private var appState
+  let item: ClipItem
+
+  @State private var draftText: String = ""
+  @State private var isSyncingFromItem = false
+  @State private var saveTask: Task<Void, Never>?
+
+  var body: some View {
+    TextField("", text: $draftText, axis: .vertical)
+      .textFieldStyle(.plain)
+      .font(.system(size: 14))
+      .lineLimit(1...)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(12)
+      .background(Color(nsColor: .textBackgroundColor))
+      .clipShape(RoundedRectangle(cornerRadius: 8))
+      .onAppear { syncFromItem() }
+      .onChange(of: item.id) { _, _ in syncFromItem() }
+      .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
+      .onDisappear { handleDisappear() }
+      .onKeyPress(.return, phases: .down, action: handleReturn)
   }
 
-  func makeNSView(context: Context) -> NSScrollView {
-    let scrollView = NSScrollView()
-    scrollView.drawsBackground = false
-    scrollView.borderType = .noBorder
-    scrollView.hasVerticalScroller = false
-    scrollView.hasHorizontalScroller = false
-    scrollView.autohidesScrollers = true
-
-    let textView = NSTextView()
-    textView.isRichText = false
-    textView.allowsUndo = true
-    textView.drawsBackground = false
-    textView.isEditable = true
-    textView.isSelectable = true
-    textView.font = .systemFont(ofSize: 14)
-    textView.textColor = .textColor
-    textView.delegate = context.coordinator
-    textView.textContainerInset = NSSize(width: 10, height: 12)
-    textView.isHorizontallyResizable = false
-    textView.isVerticallyResizable = true
-    textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-    textView.textContainer?.widthTracksTextView = true
-    textView.textContainer?.heightTracksTextView = false
-    textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
-    textView.textContainer?.lineFragmentPadding = 0
-
-    scrollView.documentView = textView
-    context.coordinator.apply(text: text, to: textView, resetSelection: true)
-    context.coordinator.syncHeight(textView: textView, scrollView: scrollView)
-    return scrollView
-  }
-
-  func updateNSView(_ scrollView: NSScrollView, context: Context) {
-    guard let textView = scrollView.documentView as? NSTextView else {
+  private func handleDraftChange(_ newValue: String) {
+    guard !isSyncingFromItem else {
       return
     }
 
-    let identityChanged = context.coordinator.lastIdentity != identity
-    context.coordinator.lastIdentity = identity
-
-    if identityChanged || textView.string != text {
-      context.coordinator.apply(text: text, to: textView, resetSelection: identityChanged)
+    saveTask?.cancel()
+    saveTask = Task { @MainActor in
+      try? await Task.sleep(for: .milliseconds(250))
+      guard !Task.isCancelled else {
+        return
+      }
+      appState.updateText(for: item.id, text: newValue)
     }
-
-    context.coordinator.syncHeight(textView: textView, scrollView: scrollView)
   }
 
-  @MainActor
-  final class Coordinator: NSObject, NSTextViewDelegate {
-    private let parent: AutoSizingEditableTextView
-    var lastIdentity: String?
-    private var lastHeight: CGFloat
+  private func syncFromItem() {
+    isSyncingFromItem = true
+    draftText = item.content.text ?? ""
+    DispatchQueue.main.async {
+      isSyncingFromItem = false
+    }
+  }
 
-    init(_ parent: AutoSizingEditableTextView) {
-      self.parent = parent
-      lastHeight = parent.minHeight
-      lastIdentity = parent.identity
+  private func handleDisappear() {
+    saveTask?.cancel()
+    let current = item.content.text ?? ""
+    guard draftText != current else {
+      return
+    }
+    appState.updateText(for: item.id, text: draftText)
+  }
+
+  private func handleReturn(_ keyPress: KeyPress) -> KeyPress.Result {
+    if keyPress.modifiers.contains(.option) || keyPress.modifiers.contains(.shift) {
+      return .handled
+    }
+    guard keyPress.modifiers.isEmpty else {
+      return .ignored
+    }
+    insertLineBreakWithWorkaround()
+    return .handled
+  }
+
+  private func currentEditor() -> NSTextView? {
+    NSApp.keyWindow?.firstResponder as? NSTextView
+  }
+
+  // 避开原生 return 插入换行时的瞬时重排抖动。
+  private func insertLineBreakWithWorkaround() {
+    guard let editor = currentEditor() else {
+      return
     }
 
-    func textDidChange(_ notification: Notification) {
-      guard let textView = notification.object as? NSTextView else {
+    editor.insertText(Self.placeholderCharacter, replacementRange: editor.selectedRange())
+
+    DispatchQueue.main.async {
+      guard let editor = currentEditor() else {
         return
       }
 
-      parent.text = textView.string
-      if let scrollView = textView.enclosingScrollView {
-        syncHeight(textView: textView, scrollView: scrollView)
-      }
-    }
+      editor.doCommand(by: #selector(NSResponder.insertLineBreak(_:)))
 
-    func apply(text: String, to textView: NSTextView, resetSelection: Bool) {
-      let selectedRange = textView.selectedRange()
-      let attributedText = NSAttributedString(string: text, attributes: textAttributes)
-      textView.textStorage?.setAttributedString(attributedText)
-      textView.typingAttributes = textAttributes
-
-      if resetSelection {
-        textView.setSelectedRange(NSRange(location: 0, length: 0))
-        textView.enclosingScrollView?.contentView.scroll(to: .zero)
-        if let scrollView = textView.enclosingScrollView {
-          scrollView.reflectScrolledClipView(scrollView.contentView)
+      DispatchQueue.main.async {
+        guard let editor = currentEditor() else {
+          return
         }
-        return
-      }
 
-      let safeLocation = min(selectedRange.location, textView.string.count)
-      let safeLength = min(selectedRange.length, textView.string.count - safeLocation)
-      textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
-    }
-
-    func syncHeight(textView: NSTextView, scrollView: NSScrollView) {
-      guard let textContainer = textView.textContainer else {
-        return
-      }
-
-      let width = max(scrollView.contentSize.width, 1)
-      textContainer.containerSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
-      textView.layoutManager?.ensureLayout(for: textContainer)
-
-      let usedHeight = textView.layoutManager?.usedRect(for: textContainer).height ?? 0
-      let contentHeight = ceil(usedHeight + textView.textContainerInset.height * 2)
-      let nextHeight = min(max(contentHeight, parent.minHeight), parent.maxHeight)
-
-      scrollView.hasVerticalScroller = parent.allowsScrolling && contentHeight > parent.maxHeight
-      if abs(lastHeight - nextHeight) > 0.5 {
-        lastHeight = nextHeight
-        parent.measuredHeight = nextHeight
+        removePlaceholderCharacter(from: editor)
+        syncDraftTextPreservingSelection(from: editor)
       }
     }
+  }
 
-    private var textAttributes: [NSAttributedString.Key: Any] {
-      let paragraphStyle = NSMutableParagraphStyle()
-      paragraphStyle.lineSpacing = 4
-      paragraphStyle.lineBreakMode = .byWordWrapping
-      return [
-        .font: NSFont.systemFont(ofSize: 14),
-        .foregroundColor: NSColor.textColor,
-        .paragraphStyle: paragraphStyle
-      ]
+  private func removePlaceholderCharacter(from editor: NSTextView) {
+    guard let textStorage = editor.textStorage else {
+      return
+    }
+
+    let selection = editor.selectedRange()
+    let nsString = textStorage.string as NSString
+    let backwardRange = NSRange(location: 0, length: min(selection.location, nsString.length))
+    var placeholderRange = nsString.range(
+      of: Self.placeholderCharacter,
+      options: .backwards,
+      range: backwardRange
+    )
+
+    if placeholderRange.location == NSNotFound {
+      let forwardRange = NSRange(
+        location: min(selection.location, nsString.length),
+        length: max(0, nsString.length - selection.location)
+      )
+      placeholderRange = nsString.range(
+        of: Self.placeholderCharacter,
+        options: [],
+        range: forwardRange
+      )
+    }
+
+    guard placeholderRange.location != NSNotFound else {
+      return
+    }
+
+    textStorage.replaceCharacters(in: placeholderRange, with: "")
+    let newLocation =
+      placeholderRange.location < selection.location
+      ? max(placeholderRange.location, selection.location - placeholderRange.length)
+      : selection.location
+    editor.setSelectedRange(NSRange(location: newLocation, length: selection.length))
+  }
+
+  private func syncDraftTextPreservingSelection(from editor: NSTextView) {
+    let selection = editor.selectedRange()
+    draftText = editor.string
+
+    DispatchQueue.main.async {
+      guard let editor = currentEditor() else {
+        return
+      }
+      editor.setSelectedRange(selection)
     }
   }
 }

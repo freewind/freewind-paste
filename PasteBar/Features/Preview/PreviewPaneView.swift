@@ -174,15 +174,7 @@ struct PreviewPaneView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        TextPreviewView(
-          item: item,
-          showsHeader: false,
-          showsMetrics: false,
-          minEditorHeight: 36,
-          maxEditorHeight: 320,
-          expandsToFill: false,
-          allowsScrolling: true
-        )
+        AutoGrowingTextPreviewView(item: item)
       }
     case .image:
       ImagePreviewView(
