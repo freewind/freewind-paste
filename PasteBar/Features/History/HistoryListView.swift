@@ -172,14 +172,26 @@ struct HistoryListView: View {
       return
     }
 
-    let currentID = uiState.focusedID ?? orderedIDs.first
-    let currentIndex = currentID.flatMap { orderedIDs.firstIndex(of: $0) } ?? 0
-    let pageStep = rowRegistry.pageStep(orderedIDs: orderedIDs)
-    let nextIndex = min(max(currentIndex + (pageStep * direction), 0), orderedIDs.count - 1)
-    let nextID = orderedIDs[nextIndex]
+    if rowRegistry.scrollPage(by: direction, orderedIDs: orderedIDs) {
+      DispatchQueue.main.async {
+        let nextID = rowRegistry.edgeVisibleItemID(
+          orderedIDs: orderedIDs,
+          direction: direction
+        ) ?? fallbackPageTargetID(orderedIDs: orderedIDs, direction: direction)
+        guard let nextID else {
+          return
+        }
+
+        uiState.prepareFocusedItemReveal(anchor: direction < 0 ? .top : .bottom, force: true)
+        uiState.select([nextID])
+      }
+      return
+    }
 
     uiState.prepareFocusedItemReveal(anchor: direction < 0 ? .top : .bottom, force: true)
-    uiState.select([nextID])
+    if let nextID = fallbackPageTargetID(orderedIDs: orderedIDs, direction: direction) {
+      uiState.select([nextID])
+    }
   }
 
   private func unitPoint(for anchor: ClipViewState.FocusScrollAnchor?) -> UnitPoint? {
@@ -191,6 +203,14 @@ struct HistoryListView: View {
     case nil:
       return nil
     }
+  }
+
+  private func fallbackPageTargetID(orderedIDs: [String], direction: Int) -> String? {
+    let currentID = uiState.focusedID ?? orderedIDs.first
+    let currentIndex = currentID.flatMap { orderedIDs.firstIndex(of: $0) } ?? 0
+    let pageStep = rowRegistry.pageStep(orderedIDs: orderedIDs)
+    let nextIndex = min(max(currentIndex + (pageStep * direction), 0), orderedIDs.count - 1)
+    return orderedIDs[nextIndex]
   }
 
   private func scrollAnchor(for itemID: String) -> UnitPoint? {
@@ -315,6 +335,63 @@ private final class HistoryRowRegistry {
     }
 
     return max(visibleCount - 1, 1)
+  }
+
+  func scrollPage(by direction: Int, orderedIDs: [String]) -> Bool {
+    cleanup()
+
+    guard
+      direction != 0,
+      let scrollView = orderedIDs.lazy.compactMap({ self.views[$0]?.value?.enclosingScrollView }).first,
+      let documentView = scrollView.documentView
+    else {
+      return false
+    }
+
+    let visibleRect = scrollView.contentView.documentVisibleRect
+    let overlap = min(max(visibleRect.height * 0.18, 36), visibleRect.height * 0.45)
+    let maxY = max(documentView.bounds.height - visibleRect.height, 0)
+    var nextOrigin = visibleRect.origin
+
+    if direction < 0 {
+      nextOrigin.y = max(visibleRect.minY - visibleRect.height + overlap, 0)
+    } else {
+      nextOrigin.y = min(visibleRect.minY + visibleRect.height - overlap, maxY)
+    }
+
+    guard abs(nextOrigin.y - visibleRect.origin.y) > 0.5 else {
+      return false
+    }
+
+    scrollView.contentView.scroll(to: nextOrigin)
+    scrollView.reflectScrolledClipView(scrollView.contentView)
+    return true
+  }
+
+  func edgeVisibleItemID(orderedIDs: [String], direction: Int) -> String? {
+    cleanup()
+
+    guard
+      let scrollView = orderedIDs.lazy.compactMap({ self.views[$0]?.value?.enclosingScrollView }).first,
+      let documentView = scrollView.documentView
+    else {
+      return nil
+    }
+
+    let visibleRect = scrollView.contentView.documentVisibleRect
+    let visibleIDs = orderedIDs.filter { itemID in
+      guard let rowView = views[itemID]?.value else {
+        return false
+      }
+      let rowFrame = rowView.convert(rowView.bounds, to: documentView)
+      return rowFrame.intersects(visibleRect)
+    }
+
+    guard !visibleIDs.isEmpty else {
+      return nil
+    }
+
+    return direction < 0 ? visibleIDs.first : visibleIDs.last
   }
 
   private func cleanup() {
