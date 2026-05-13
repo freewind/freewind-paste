@@ -250,8 +250,7 @@ struct PreviewPaneView: View {
     switch item.kind {
     case .text:
       let text = item.content.text ?? ""
-      let lines = max(text.split(separator: "\n", omittingEmptySubsequences: false).count, 1)
-      return "\(text.count) chars · \(lines) lines"
+      return "\(text.count) chars"
     case .image:
       let width = item.meta.imageWidth ?? 0
       let height = item.meta.imageHeight ?? 0

@@ -31,6 +31,8 @@ struct TextPreviewView: View {
         Text(measurementText)
           .font(.system(size: 14))
           .lineSpacing(4)
+          .multilineTextAlignment(.leading)
+          .fixedSize(horizontal: false, vertical: true)
           .foregroundStyle(.clear)
           .padding(.horizontal, 14)
           .padding(.vertical, 12)
