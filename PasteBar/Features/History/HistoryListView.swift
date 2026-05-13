@@ -10,99 +10,104 @@ struct HistoryListView: View {
 
   var body: some View {
     ScrollViewReader { proxy in
-      List {
-        ForEach(uiState.groupedVisibleItems) { group in
-          Section(group.title) {
-            ForEach(group.items) { item in
-              NativeClickableRow(
-                content: AnyView(
-                  HistoryRowView(
-                    item: item,
-                    isDragActive: draggedItemID != nil,
-                    isDragged: draggedItemID == item.id,
-                    dropLine: dropLine(for: item.id)
-                  )
-                ),
-                onClick: { event in
-                  uiState.handleClick(
-                    on: item.id,
-                    orderedIDs: uiState.visibleItems.map(\.id),
-                    modifiers: event.modifierFlags
-                  )
-                },
-                onDoubleClick: {
-                  if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 0) {
+          ForEach(uiState.groupedVisibleItems) { group in
+            VStack(alignment: .leading, spacing: 0) {
+              Text(group.title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+              ForEach(group.items) { item in
+                NativeClickableRow(
+                  content: AnyView(
+                    HistoryRowView(
+                      item: item,
+                      isDragActive: draggedItemID != nil,
+                      isDragged: draggedItemID == item.id,
+                      dropLine: dropLine(for: item.id)
+                    )
+                  ),
+                  onClick: { event in
                     uiState.handleClick(
                       on: item.id,
                       orderedIDs: uiState.visibleItems.map(\.id),
-                      modifiers: []
+                      modifiers: event.modifierFlags
                     )
+                  },
+                  onDoubleClick: {
+                    if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+                      uiState.handleClick(
+                        on: item.id,
+                        orderedIDs: uiState.visibleItems.map(\.id),
+                        modifiers: []
+                      )
+                    }
+                    appState.pasteSelection(mode: .normalEnter)
                   }
-                  appState.pasteSelection(mode: .normalEnter)
-                }
-              )
-                .tag(item.id)
-                .contentShape(Rectangle())
-                .listRowInsets(.init())
-                .listRowBackground(Color.clear)
-                .contextMenu {
-                  let targetIDs = contextTargetIDs(for: item)
-                  let isMultiTarget = targetIDs.count > 1
-
-                  if uiState.currentTab != .trash {
-                    Button("Paste") {
-                      appState.paste(targetIDs, mode: .normalEnter)
-                    }
-
-                    Divider()
-
-                    Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
-                      appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
-                    }
-                    Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
-                      appState.promptForLabel(for: item.id)
-                    }
-                    .disabled(isMultiTarget)
-
-                    Button("Move to Trash") {
-                      appState.workflowService.delete(targetIDs, permanently: false)
-                    }
-                  } else {
-                    Button("Restore") {
-                      appState.workflowService.restore(targetIDs)
-                    }
-                    Button("Delete Permanently") {
-                      appState.workflowService.delete(targetIDs, permanently: true)
-                    }
-                  }
-                }
-                .onDrag {
-                  if !uiState.selectedIDs.contains(item.id) {
-                    uiState.select([item.id])
-                  }
-                  draggedItemID = item.id
-                  dropTarget = nil
-                  return NSItemProvider(object: item.id as NSString)
-                }
-                .onDrop(
-                  of: [UTType.text],
-                  delegate: HistoryRowDropDelegate(
-                    targetItemID: item.id,
-                    groupItemIDs: group.items.map(\.id),
-                    draggedItemID: $draggedItemID,
-                    dropTarget: $dropTarget,
-                    onMove: { offsets, destination in
-                      appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
-                    }
-                  )
                 )
+                  .id(item.id)
+                  .frame(maxWidth: .infinity)
+                  .contentShape(Rectangle())
+                  .contextMenu {
+                    let targetIDs = contextTargetIDs(for: item)
+                    let isMultiTarget = targetIDs.count > 1
+
+                    if uiState.currentTab != .trash {
+                      Button("Paste") {
+                        appState.paste(targetIDs, mode: .normalEnter)
+                      }
+
+                      Divider()
+
+                      Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
+                        appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
+                      }
+                      Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
+                        appState.promptForLabel(for: item.id)
+                      }
+                      .disabled(isMultiTarget)
+
+                      Button("Move to Trash") {
+                        appState.workflowService.delete(targetIDs, permanently: false)
+                      }
+                    } else {
+                      Button("Restore") {
+                        appState.workflowService.restore(targetIDs)
+                      }
+                      Button("Delete Permanently") {
+                        appState.workflowService.delete(targetIDs, permanently: true)
+                      }
+                    }
+                  }
+                  .onDrag {
+                    if !uiState.selectedIDs.contains(item.id) {
+                      uiState.select([item.id])
+                    }
+                    draggedItemID = item.id
+                    dropTarget = nil
+                    return NSItemProvider(object: item.id as NSString)
+                  }
+                  .onDrop(
+                    of: [UTType.text],
+                    delegate: HistoryRowDropDelegate(
+                      targetItemID: item.id,
+                      groupItemIDs: group.items.map(\.id),
+                      draggedItemID: $draggedItemID,
+                      dropTarget: $dropTarget,
+                      onMove: { offsets, destination in
+                        appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
+                      }
+                    )
+                  )
+              }
             }
           }
         }
       }
-      .listStyle(.sidebar)
-      .controlSize(.small)
-      .environment(\.defaultMinListRowHeight, 26)
       .background(
         DragEndMonitorView {
           guard draggedItemID != nil || dropTarget != nil else {

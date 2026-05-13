@@ -27,8 +27,8 @@ struct HistoryRowView: View {
             Text(item.label)
               .font(.system(size: 10, weight: .semibold))
               .foregroundStyle(.secondary)
-              .padding(.horizontal, 20)
-              .padding(.vertical, 10)
+              .padding(.horizontal, 6)
+              .padding(.vertical, 1)
               .background(Color.secondary.opacity(0.12))
               .clipShape(Capsule())
           }
@@ -97,13 +97,13 @@ struct HistoryRowView: View {
 
   @ViewBuilder
   private var rowBackground: some View {
-    RoundedRectangle(cornerRadius: 8)
+    Rectangle()
       .fill(backgroundColor)
   }
 
   @ViewBuilder
   private var dropIndicator: some View {
-    RoundedRectangle(cornerRadius: 999)
+    Rectangle()
       .fill(Color.accentColor)
       .frame(height: 2)
       .padding(.horizontal, 2)
