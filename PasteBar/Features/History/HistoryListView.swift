@@ -189,13 +189,13 @@ struct HistoryListView: View {
       return .bottom
     }
 
-    let todayItems = uiState.groupedVisibleItems.first(where: { $0.title == "Today" })?.items ?? []
-    if let firstID = todayItems.first?.id, itemID == firstID {
-      return .top
-    }
-
-    if let lastID = todayItems.last?.id, itemID == lastID {
-      return .bottom
+    for group in uiState.groupedVisibleItems {
+      if let firstID = group.items.first?.id, itemID == firstID {
+        return .top
+      }
+      if let lastID = group.items.last?.id, itemID == lastID {
+        return .bottom
+      }
     }
 
     return nil
@@ -259,7 +259,7 @@ private final class HistoryRowRegistry {
     let rowFrame = rowView.convert(rowView.bounds, to: documentView)
     let visibleRect = scrollView.contentView.documentVisibleRect
 
-    if rowFrame.intersects(visibleRect) {
+    if anchor == nil, rowFrame.intersects(visibleRect) {
       return
     }
 
