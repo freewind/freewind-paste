@@ -2,7 +2,6 @@ import SwiftUI
 
 struct TextPreviewView: View {
   @EnvironmentObject private var appState: AppState
-  @ObserveInjection private var inject
   let item: ClipItem
   var showsHeader: Bool = true
   var showsMetrics: Bool = true
@@ -80,7 +79,6 @@ struct TextPreviewView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: expandsToFill ? .infinity : nil, alignment: .topLeading)
-    .enableInjection()
   }
 
   private func handleDraftChange(_ newValue: String) {

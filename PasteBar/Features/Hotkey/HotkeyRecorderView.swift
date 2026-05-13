@@ -6,7 +6,6 @@ struct HotkeyRecorderView: View {
   let hotkey: AppHotkey
   let requiresModifier: Bool
   let onChange: (AppHotkey) -> Void
-  @ObserveInjection private var inject
 
   @State private var isRecording = false
   @State private var monitor: Any?
@@ -46,7 +45,6 @@ struct HotkeyRecorderView: View {
     .onDisappear {
       stopRecording()
     }
-    .enableInjection()
   }
 
   private func toggleRecording() {

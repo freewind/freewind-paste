@@ -17,7 +17,6 @@ struct PreviewPaneView: View {
 
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
-  @ObserveInjection private var inject
   @State private var multiSelectionMode: MultiSelectionPreviewMode = .split
   @State private var mergedDraftText: String = ""
   @State private var mergedSelectionSignature: String = ""
@@ -70,7 +69,6 @@ struct PreviewPaneView: View {
     .onChange(of: currentSelectionSignature) { _, _ in
       syncMergedDraft()
     }
-    .enableInjection()
   }
 
   private var multiSelectionContent: some View {

@@ -3,7 +3,6 @@ import SwiftUI
 struct HistoryView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
-  @ObserveInjection private var inject
 
   var body: some View {
     VStack(spacing: 0) {
@@ -52,7 +51,6 @@ struct HistoryView: View {
     .onChange(of: uiState.kindFilter) { _, _ in
       uiState.normalizeSelection()
     }
-    .enableInjection()
   }
 
   private var header: some View {
@@ -60,7 +58,7 @@ struct HistoryView: View {
       SearchBarView()
 
       HStack(spacing: 6) {
-        Picker("Type", selection: $uiState.kindFilter) {
+          Picker("Type", selection: $uiState.kindFilter) {
           ForEach(ClipKindFilter.allCases, id: \.self) { filter in
             Text(filter.title).tag(filter)
           }

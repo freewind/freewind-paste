@@ -4,7 +4,6 @@ import SwiftUI
 struct SearchBarView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
-  @ObserveInjection private var inject
 
   var body: some View {
     PopupAwareSearchField(
@@ -15,7 +14,6 @@ struct SearchBarView: View {
     .onChange(of: uiState.searchQuery) { _, _ in
       uiState.selectFirstVisible()
     }
-    .enableInjection()
   }
 }
 

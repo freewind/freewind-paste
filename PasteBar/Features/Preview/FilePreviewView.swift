@@ -2,7 +2,6 @@ import SwiftUI
 
 struct FilePreviewView: View {
   @EnvironmentObject private var appState: AppState
-  @ObserveInjection private var inject
   let item: ClipItem
   var compact: Bool = false
 
@@ -73,6 +72,5 @@ struct FilePreviewView: View {
       .foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, maxHeight: compact ? nil : .infinity, alignment: .topLeading)
-    .enableInjection()
   }
 }
