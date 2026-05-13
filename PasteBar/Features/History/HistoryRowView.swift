@@ -21,7 +21,7 @@ struct HistoryRowView: View {
 
       favoriteButton
 
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: 0) {
         HStack(spacing: 6) {
           if !item.label.isEmpty {
             Text(item.label)
@@ -35,13 +35,6 @@ struct HistoryRowView: View {
 
           Text(contentTitle)
             .font(.system(size: 12))
-            .lineLimit(1)
-        }
-
-        if !subtitle.isEmpty {
-          Text(subtitle)
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
             .lineLimit(1)
         }
       }
@@ -138,17 +131,5 @@ struct HistoryRowView: View {
     }
 
     return .clear
-  }
-
-  private var subtitle: String {
-    switch item.kind {
-    case .text:
-      return ""
-    case .image:
-      return "\(item.meta.imageWidth ?? 0)x\(item.meta.imageHeight ?? 0)"
-    case .file:
-      let count = item.meta.fileCount ?? 1
-      return count == 1 ? (item.content.filePaths?.first ?? "") : "\(count) files"
-    }
   }
 }
