@@ -425,12 +425,12 @@ final class AppState {
   }
 
   private func shouldBypassPopupShortcut(_ action: PopupShortcutAction) -> Bool {
-    guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
-      return false
+    if action == .paste || action == .nativePaste {
+      return isEditingTextInput()
     }
 
-    if action == .paste || action == .nativePaste {
-      return !responder.isFieldEditor
+    guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
+      return false
     }
 
     guard responder.isFieldEditor else {
@@ -443,6 +443,10 @@ final class AppState {
     default:
       return false
     }
+  }
+
+  private func isEditingTextInput() -> Bool {
+    popupController.currentWindow?.firstResponder is NSTextView
   }
 
   private func capturePasteTargetApp() {
