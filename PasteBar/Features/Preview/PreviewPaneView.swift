@@ -133,12 +133,7 @@ struct PreviewPaneView: View {
   private func content(item: ClipItem) -> some View {
     switch item.kind {
     case .text:
-      TextPreviewView(
-        item: item,
-        minEditorHeight: 180,
-        maxEditorHeight: 1_200,
-        expandsToFill: true
-      )
+      TextPreviewView(item: item)
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     case .image:
       VStack(alignment: .leading, spacing: 10) {

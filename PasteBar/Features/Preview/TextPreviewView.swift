@@ -4,12 +4,6 @@ import SwiftUI
 struct TextPreviewView: View {
   @Environment(AppState.self) private var appState
   let item: ClipItem
-  var showsHeader: Bool = true
-  var showsMetrics: Bool = true
-  var minEditorHeight: CGFloat = 44
-  var maxEditorHeight: CGFloat = 260
-  var expandsToFill: Bool = false
-  var allowsScrolling: Bool = true
 
   @State private var draftText: String = ""
   @State private var isSyncingFromItem = false
@@ -17,13 +11,11 @@ struct TextPreviewView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      if showsHeader {
-        HStack {
-          if !item.label.isEmpty {
-            Text(item.label)
-              .font(.headline)
-              .lineLimit(1)
-          }
+      HStack {
+        if !item.label.isEmpty {
+          Text(item.label)
+            .font(.headline)
+            .lineLimit(1)
         }
       }
 
@@ -31,11 +23,7 @@ struct TextPreviewView: View {
         .font(.system(size: 14))
         .scrollContentBackground(.hidden)
         .frame(maxWidth: .infinity)
-        .frame(
-          minHeight: expandsToFill ? max(minEditorHeight, 180) : minEditorHeight,
-          maxHeight: expandsToFill ? .infinity : maxEditorHeight,
-          alignment: .topLeading
-        )
+        .frame(minHeight: 180, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(NSColor.textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .onAppear { syncFromItem() }
@@ -43,17 +31,15 @@ struct TextPreviewView: View {
         .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
         .onDisappear { handleDisappear() }
 
-      if showsMetrics {
-        HStack(spacing: 6) {
-          Text("\(lineCount) lines")
-          Text("·")
-          Text("\(draftText.count) chars")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
+      HStack(spacing: 6) {
+        Text("\(lineCount) lines")
+        Text("·")
+        Text("\(draftText.count) chars")
       }
+      .font(.caption)
+      .foregroundStyle(.secondary)
     }
-    .frame(maxWidth: .infinity, maxHeight: expandsToFill ? .infinity : nil, alignment: .topLeading)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }
 
   private func handleDraftChange(_ newValue: String) {
