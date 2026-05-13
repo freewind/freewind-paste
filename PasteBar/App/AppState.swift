@@ -363,13 +363,13 @@ final class AppState {
     case .expandNext:
       uiState.moveFocusExtendingSelection(by: 1)
     case .pageUp:
-      uiState.requestPageMove(by: -1)
+      uiState.requestViewportMove(.page(direction: -1))
     case .pageDown:
-      uiState.requestPageMove(by: 1)
+      uiState.requestViewportMove(.page(direction: 1))
     case .jumpToTop:
-      uiState.moveFocusToScopeBoundary(isStart: true)
+      uiState.requestViewportMove(.boundary(isStart: true))
     case .jumpToBottom:
-      uiState.moveFocusToScopeBoundary(isStart: false)
+      uiState.requestViewportMove(.boundary(isStart: false))
     case .moveSelectionUp:
       moveSelectionBlock(by: -1)
     case .moveSelectionDown:

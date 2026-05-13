@@ -50,6 +50,11 @@ enum ImageOutputMode: String, CaseIterable {
 @MainActor
 @Observable
 final class ClipViewState {
+  enum ViewportMoveCommand: Equatable {
+    case page(direction: Int)
+    case boundary(isStart: Bool)
+  }
+
   enum VisibleCheckedState {
     case none
     case partial
@@ -75,9 +80,9 @@ final class ClipViewState {
   var currentTab: MainTab
   var searchQuery: String
   var kindFilter: ClipKindFilter
-  private(set) var pageMoveRequestID: Int
+  private(set) var viewportMoveRequestID: Int
   var selectionAnchorID: String?
-  private var pendingPageMoveDirection: Int
+  private var pendingViewportMoveCommand: ViewportMoveCommand?
 
   init(
     store: ClipStore,
@@ -87,7 +92,7 @@ final class ClipViewState {
     currentTab: MainTab = .history,
     searchQuery: String = "",
     kindFilter: ClipKindFilter = .all,
-    pageMoveRequestID: Int = 0
+    viewportMoveRequestID: Int = 0
   ) {
     self.store = store
     self.selectedIDs = selectedIDs
@@ -96,8 +101,8 @@ final class ClipViewState {
     self.currentTab = currentTab
     self.searchQuery = searchQuery
     self.kindFilter = kindFilter
-    self.pageMoveRequestID = pageMoveRequestID
-    pendingPageMoveDirection = 0
+    self.viewportMoveRequestID = viewportMoveRequestID
+    pendingViewportMoveCommand = nil
     selectionAnchorID = focusedID ?? selectedIDs.first
   }
 
@@ -281,56 +286,19 @@ final class ClipViewState {
     selectionAnchorID = anchorID
   }
 
-  func moveFocusToScopeBoundary(isStart: Bool) {
-    let groups = groupedVisibleItems
-    guard !groups.isEmpty else {
-      selectedIDs.removeAll()
-      focusedID = nil
-      selectionAnchorID = nil
+  func requestViewportMove(_ command: ViewportMoveCommand) {
+    if case let .page(direction) = command, direction == 0 {
       return
     }
 
-    let currentID = focusedID ?? selectedItems.first?.id ?? visibleItems.first?.id
-    let currentGroupIndex = currentID.flatMap { id in
-      groups.firstIndex { group in
-        group.items.contains { $0.id == id }
-      }
-    } ?? 0
-
-    let currentBoundaryID = boundaryID(in: groups[currentGroupIndex], isStart: isStart)
-    let targetGroupIndex: Int
-    if currentID == currentBoundaryID {
-      let nextIndex = currentGroupIndex + (isStart ? -1 : 1)
-      if groups.indices.contains(nextIndex) {
-        targetGroupIndex = nextIndex
-      } else {
-        targetGroupIndex = currentGroupIndex
-      }
-    } else {
-      targetGroupIndex = currentGroupIndex
-    }
-
-    guard let targetID = boundaryID(in: groups[targetGroupIndex], isStart: isStart) else {
-      return
-    }
-
-    selectedIDs = [targetID]
-    focusedID = targetID
-    selectionAnchorID = targetID
+    pendingViewportMoveCommand = command
+    viewportMoveRequestID += 1
   }
 
-  func requestPageMove(by direction: Int) {
-    guard direction != 0 else {
-      return
-    }
-    pendingPageMoveDirection = direction
-    pageMoveRequestID += 1
-  }
-
-  func consumePendingPageMoveDirection() -> Int {
-    let direction = pendingPageMoveDirection
-    pendingPageMoveDirection = 0
-    return direction
+  func consumePendingViewportMoveCommand() -> ViewportMoveCommand? {
+    let command = pendingViewportMoveCommand
+    pendingViewportMoveCommand = nil
+    return command
   }
 
   func collapseSelectionToAnchor() -> Bool {
@@ -428,9 +396,5 @@ final class ClipViewState {
 
   func clearCheckedVisible() {
     checkedIDs.subtract(visibleItemIDs)
-  }
-
-  private func boundaryID(in group: GroupedItems, isStart: Bool) -> String? {
-    (isStart ? group.items.first : group.items.last)?.id
   }
 }
