@@ -141,6 +141,12 @@ struct HistoryListView: View {
       }
       syncFocusedItemVisibility()
     }
+    .onChange(of: uiState.pageMoveRequestID) { _, _ in
+      guard draggedItemID == nil else {
+        return
+      }
+      performPageMove()
+    }
   }
 
   private func syncFocusedItemVisibility() {
@@ -152,6 +158,26 @@ struct HistoryListView: View {
     DispatchQueue.main.async {
       rowRegistry.revealIfNeeded(itemID: focusedID, anchor: anchor)
     }
+  }
+
+  private func performPageMove() {
+    let direction = uiState.consumePendingPageMoveDirection()
+    guard direction != 0 else {
+      return
+    }
+
+    let orderedIDs = uiState.visibleItems.map(\.id)
+    guard !orderedIDs.isEmpty else {
+      return
+    }
+
+    let currentID = uiState.focusedID ?? orderedIDs.first
+    let currentIndex = currentID.flatMap { orderedIDs.firstIndex(of: $0) } ?? 0
+    let pageStep = rowRegistry.pageStep(orderedIDs: orderedIDs)
+    let nextIndex = min(max(currentIndex + (pageStep * direction), 0), orderedIDs.count - 1)
+    let nextID = orderedIDs[nextIndex]
+
+    uiState.select([nextID])
   }
 
   private func scrollAnchor(for itemID: String) -> UnitPoint? {
@@ -252,6 +278,30 @@ private final class HistoryRowRegistry {
     nextOrigin.y = min(max(nextOrigin.y, 0), maxY)
     scrollView.contentView.scroll(to: nextOrigin)
     scrollView.reflectScrolledClipView(scrollView.contentView)
+  }
+
+  func pageStep(orderedIDs: [String]) -> Int {
+    cleanup()
+
+    guard
+      let scrollView = orderedIDs.lazy.compactMap({ self.views[$0]?.value?.enclosingScrollView }).first,
+      let documentView = scrollView.documentView
+    else {
+      return 10
+    }
+
+    let visibleRect = scrollView.contentView.documentVisibleRect
+    let visibleCount = orderedIDs.reduce(into: 0) { count, itemID in
+      guard let rowView = views[itemID]?.value else {
+        return
+      }
+      let rowFrame = rowView.convert(rowView.bounds, to: documentView)
+      if rowFrame.intersects(visibleRect) {
+        count += 1
+      }
+    }
+
+    return max(visibleCount - 1, 1)
   }
 
   private func cleanup() {

@@ -361,6 +361,10 @@ final class AppState: ObservableObject {
       uiState.moveFocusExtendingSelection(by: -1)
     case .expandNext:
       uiState.moveFocusExtendingSelection(by: 1)
+    case .pageUp:
+      uiState.requestPageMove(by: -1)
+    case .pageDown:
+      uiState.requestPageMove(by: 1)
     case .jumpToTop:
       uiState.moveFocusToScopeBoundary(isStart: true)
     case .jumpToBottom:
@@ -426,7 +430,7 @@ final class AppState: ObservableObject {
     }
 
     switch action {
-    case .focusPrevious, .focusNext, .expandPrevious, .expandNext, .moveSelectionUp, .moveSelectionDown:
+    case .focusPrevious, .focusNext, .expandPrevious, .expandNext, .pageUp, .pageDown, .moveSelectionUp, .moveSelectionDown:
       return !responder.isFieldEditor
     default:
       return false

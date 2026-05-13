@@ -73,7 +73,9 @@ final class ClipViewState: ObservableObject {
   @Published var currentTab: MainTab
   @Published var searchQuery: String
   @Published var kindFilter: ClipKindFilter
+  @Published private(set) var pageMoveRequestID: Int
   var selectionAnchorID: String?
+  private var pendingPageMoveDirection: Int
 
   init(
     store: ClipStore,
@@ -82,7 +84,8 @@ final class ClipViewState: ObservableObject {
     focusedID: String? = nil,
     currentTab: MainTab = .history,
     searchQuery: String = "",
-    kindFilter: ClipKindFilter = .all
+    kindFilter: ClipKindFilter = .all,
+    pageMoveRequestID: Int = 0
   ) {
     self.store = store
     self.selectedIDs = selectedIDs
@@ -91,6 +94,8 @@ final class ClipViewState: ObservableObject {
     self.currentTab = currentTab
     self.searchQuery = searchQuery
     self.kindFilter = kindFilter
+    self.pageMoveRequestID = pageMoveRequestID
+    pendingPageMoveDirection = 0
     selectionAnchorID = focusedID ?? selectedIDs.first
   }
 
@@ -268,6 +273,20 @@ final class ClipViewState: ObservableObject {
     selectedIDs = [targetID]
     focusedID = targetID
     selectionAnchorID = targetID
+  }
+
+  func requestPageMove(by direction: Int) {
+    guard direction != 0 else {
+      return
+    }
+    pendingPageMoveDirection = direction
+    pageMoveRequestID += 1
+  }
+
+  func consumePendingPageMoveDirection() -> Int {
+    let direction = pendingPageMoveDirection
+    pendingPageMoveDirection = 0
+    return direction
   }
 
   func collapseSelectionToAnchor() -> Bool {
