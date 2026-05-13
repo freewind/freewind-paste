@@ -137,7 +137,7 @@ struct HistoryListView: View {
         guard draggedItemID == nil else {
           return
         }
-        scrollToFocusedItem(with: proxy)
+        scrollToFocusedItem(with: proxy, animated: false)
       }
     }
   }
