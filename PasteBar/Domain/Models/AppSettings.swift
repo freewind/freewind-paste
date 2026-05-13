@@ -6,7 +6,7 @@ import Foundation
 struct AppHotkey: Codable, Equatable {
   /// macOS 虚拟键码。
   /// 例：`9 = V`、`36 = Return`、`48 = Tab`、`51 = Delete`、`53 = Escape`
-  /// `116/121 = Page Up/Page Down`、`125/126 = Down/Up`
+  /// `115/119 = Home/End`、`116/121 = Page Up/Page Down`、`125/126 = Down/Up`
   var keyCode: UInt32
   /// Carbon modifier bitmask。
   /// 当前只用这 4 个值：`256 = Command`、`512 = Shift`、`2048 = Option`、`4096 = Control`
@@ -46,7 +46,7 @@ struct AppHotkey: Codable, Equatable {
       8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R",
       16: "Y", 17: "T", 31: "O", 32: "U", 34: "I", 35: "P", 36: "↩",
       37: "L", 38: "J", 40: "K", 45: "N", 46: "M", 48: "⇥", 49: "Space",
-      51: "⌫", 53: "⎋", 76: "⌤", 116: "Page Up", 121: "Page Down",
+      51: "⌫", 53: "⎋", 76: "⌤", 115: "Home", 116: "Page Up", 119: "End", 121: "Page Down",
       123: "←", 124: "→", 125: "↓", 126: "↑"
     ]
     return mapping[keyCode] ?? "#\(keyCode)"
@@ -96,9 +96,9 @@ enum PopupShortcutAction: String, CaseIterable, Codable, Identifiable {
     case .pageDown:
       return "Page Down"
     case .jumpToTop:
-      return "Jump To Top"
+      return "Home"
     case .jumpToBottom:
-      return "Jump To Bottom"
+      return "End"
     case .moveSelectionUp:
       return "Move Selection Up"
     case .moveSelectionDown:
@@ -161,8 +161,8 @@ struct PopupHotkeys: Codable, Equatable {
     expandNext: .init(keyCode: 125, modifiers: 512), // Shift + Down
     pageUp: .init(keyCode: 116, modifiers: 0), // Page Up
     pageDown: .init(keyCode: 121, modifiers: 0), // Page Down
-    jumpToTop: .init(keyCode: 126, modifiers: 256), // Command + Up
-    jumpToBottom: .init(keyCode: 125, modifiers: 256), // Command + Down
+    jumpToTop: .init(keyCode: 115, modifiers: 0), // Home
+    jumpToBottom: .init(keyCode: 119, modifiers: 0), // End
     moveSelectionUp: .init(keyCode: 126, modifiers: 512 | 2048), // Shift + Option + Up
     moveSelectionDown: .init(keyCode: 125, modifiers: 512 | 2048), // Shift + Option + Down
     deleteSelection: .init(keyCode: 51, modifiers: 0), // Delete
@@ -217,8 +217,10 @@ struct PopupHotkeys: Codable, Equatable {
     expandNext = try container.decodeIfPresent(AppHotkey.self, forKey: .expandNext) ?? Self.default.expandNext
     pageUp = try container.decodeIfPresent(AppHotkey.self, forKey: .pageUp) ?? Self.default.pageUp
     pageDown = try container.decodeIfPresent(AppHotkey.self, forKey: .pageDown) ?? Self.default.pageDown
-    jumpToTop = try container.decodeIfPresent(AppHotkey.self, forKey: .jumpToTop) ?? Self.default.jumpToTop
-    jumpToBottom = try container.decodeIfPresent(AppHotkey.self, forKey: .jumpToBottom) ?? Self.default.jumpToBottom
+    let decodedJumpToTop = try container.decodeIfPresent(AppHotkey.self, forKey: .jumpToTop) ?? Self.default.jumpToTop
+    let decodedJumpToBottom = try container.decodeIfPresent(AppHotkey.self, forKey: .jumpToBottom) ?? Self.default.jumpToBottom
+    jumpToTop = decodedJumpToTop == .init(keyCode: 126, modifiers: 256) ? Self.default.jumpToTop : decodedJumpToTop
+    jumpToBottom = decodedJumpToBottom == .init(keyCode: 125, modifiers: 256) ? Self.default.jumpToBottom : decodedJumpToBottom
     moveSelectionUp = try container.decodeIfPresent(AppHotkey.self, forKey: .moveSelectionUp) ?? Self.default.moveSelectionUp
     moveSelectionDown = try container.decodeIfPresent(AppHotkey.self, forKey: .moveSelectionDown) ?? Self.default.moveSelectionDown
     deleteSelection = try container.decodeIfPresent(AppHotkey.self, forKey: .deleteSelection) ?? Self.default.deleteSelection

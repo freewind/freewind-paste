@@ -259,14 +259,35 @@ final class ClipViewState: ObservableObject {
   }
 
   func moveFocusToScopeBoundary(isStart: Bool) {
-    let scopeItems: [ClipItem]
-    if searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-      scopeItems = groupedVisibleItems.first(where: { $0.title == "Today" })?.items ?? []
-    } else {
-      scopeItems = visibleItems
+    let groups = groupedVisibleItems
+    guard !groups.isEmpty else {
+      selectedIDs.removeAll()
+      focusedID = nil
+      selectionAnchorID = nil
+      return
     }
 
-    guard let targetID = (isStart ? scopeItems.first : scopeItems.last)?.id else {
+    let currentID = focusedID ?? selectedItems.first?.id ?? visibleItems.first?.id
+    let currentGroupIndex = currentID.flatMap { id in
+      groups.firstIndex { group in
+        group.items.contains { $0.id == id }
+      }
+    } ?? 0
+
+    let currentBoundaryID = boundaryID(in: groups[currentGroupIndex], isStart: isStart)
+    let targetGroupIndex: Int
+    if currentID == currentBoundaryID {
+      let nextIndex = currentGroupIndex + (isStart ? -1 : 1)
+      if groups.indices.contains(nextIndex) {
+        targetGroupIndex = nextIndex
+      } else {
+        targetGroupIndex = currentGroupIndex
+      }
+    } else {
+      targetGroupIndex = currentGroupIndex
+    }
+
+    guard let targetID = boundaryID(in: groups[targetGroupIndex], isStart: isStart) else {
       return
     }
 
@@ -287,6 +308,10 @@ final class ClipViewState: ObservableObject {
     let direction = pendingPageMoveDirection
     pendingPageMoveDirection = 0
     return direction
+  }
+
+  private func boundaryID(in group: GroupedItems, isStart: Bool) -> String? {
+    (isStart ? group.items.first : group.items.last)?.id
   }
 
   func collapseSelectionToAnchor() -> Bool {
