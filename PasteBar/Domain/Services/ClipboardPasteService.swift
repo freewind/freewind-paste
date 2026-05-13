@@ -309,14 +309,26 @@ final class ClipWorkflowService {
     guard
       item.kind == .image,
       let path = item.content.imageAssetPath,
-      let image = repository.imageAssetStore.load(
-        relativePath: path,
-        mode: .lowResolution,
-        maxDimension: imageMaxDimension
-      ),
+      let originalImage = repository.imageAssetStore.load(relativePath: path)
+    else {
+      return false
+    }
+
+    let image = repository.imageAssetStore.transformed(
+      image: originalImage,
+      mode: .lowResolution,
+      maxDimension: imageMaxDimension
+    )
+
+    guard
       let saved = try? repository.imageAssetStore.save(
         image,
-        format: repository.imageAssetStore.preferredFormat(for: image, mode: .lowResolution)
+        format: repository.imageAssetStore.preferredFormat(for: image, mode: .lowResolution),
+        compressionFactor: repository.imageAssetStore.compressionFactor(
+          for: originalImage,
+          mode: .lowResolution,
+          maxDimension: imageMaxDimension
+        )
       )
     else {
       return false

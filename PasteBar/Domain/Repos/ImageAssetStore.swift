@@ -16,7 +16,6 @@ final class ImageAssetStore {
     }
   }
 
-  private let lowResolutionJPEGCompressionFactor: CGFloat = 0.72
   let assetsDirectoryURL: URL
 
   init(assetsDirectoryURL: URL) {
@@ -31,11 +30,12 @@ final class ImageAssetStore {
   func save(
     _ image: NSImage,
     id: String = UUID().uuidString,
-    format: ImageFileFormat = .png
+    format: ImageFileFormat = .png,
+    compressionFactor: CGFloat? = nil
   ) throws -> (relativePath: String, hash: String, width: Int, height: Int, byteSize: Int64) {
     guard
       let rep = bitmap(for: image),
-      let data = encodedData(for: rep, format: format)
+      let data = encodedData(for: rep, format: format, compressionFactor: compressionFactor)
     else {
       throw NSError(domain: "PasteBar.ImageAssetStore", code: 1)
     }
@@ -75,7 +75,10 @@ final class ImageAssetStore {
       return resizedImage
     }
 
-    return recompressedJPEG(image: resizedImage, compressionFactor: lowResolutionJPEGCompressionFactor)
+    return recompressedJPEG(
+      image: resizedImage,
+      compressionFactor: compressionFactor(for: image, mode: mode, maxDimension: maxDimension)
+    )
       ?? resizedImage
   }
 
@@ -106,10 +109,29 @@ final class ImageAssetStore {
       return nil
     }
     let rendered = transformed(image: image, mode: mode, maxDimension: maxDimension)
-    guard let data = encodedData(for: rendered, format: preferredFormat(for: rendered, mode: mode)) else {
+    guard let data = encodedData(
+      for: rendered,
+      format: preferredFormat(for: rendered, mode: mode),
+      compressionFactor: compressionFactor(for: image, mode: mode, maxDimension: maxDimension)
+    ) else {
       return nil
     }
     return Int64(data.count)
+  }
+
+  func compressionFactor(for image: NSImage, mode: ImageOutputMode, maxDimension: Double) -> CGFloat {
+    guard mode == .lowResolution else {
+      return 1
+    }
+
+    let longestSide = max(image.size.width, image.size.height)
+    guard longestSide > 0 else {
+      return 0.82
+    }
+
+    let clampedDimension = min(CGFloat(maxDimension), longestSide)
+    let scale = max(min(clampedDimension / longestSide, 1), 0)
+    return max(0.18, min(0.85, 0.18 + (0.67 * scale)))
   }
 
   func preferredFormat(for image: NSImage, mode: ImageOutputMode) -> ImageFileFormat {
@@ -155,23 +177,23 @@ final class ImageAssetStore {
     return NSBitmapImageRep(data: tiff)
   }
 
-  private func encodedData(for image: NSImage, format: ImageFileFormat) -> Data? {
+  private func encodedData(for image: NSImage, format: ImageFileFormat, compressionFactor: CGFloat? = nil) -> Data? {
     guard
       let rep = bitmap(for: image)
     else {
       return nil
     }
-    return encodedData(for: rep, format: format)
+    return encodedData(for: rep, format: format, compressionFactor: compressionFactor)
   }
 
-  private func encodedData(for rep: NSBitmapImageRep, format: ImageFileFormat) -> Data? {
+  private func encodedData(for rep: NSBitmapImageRep, format: ImageFileFormat, compressionFactor: CGFloat? = nil) -> Data? {
     switch format {
     case .png:
       return rep.representation(using: .png, properties: [:])
     case .jpeg:
       return rep.representation(
         using: .jpeg,
-        properties: [.compressionFactor: lowResolutionJPEGCompressionFactor]
+        properties: [.compressionFactor: compressionFactor ?? 0.82]
       )
     }
   }

@@ -19,7 +19,7 @@ struct ImagePreviewView: View {
       {
         HStack(spacing: 10) {
           if outputMode == .lowResolution {
-            Text("Long edge \(Int(appState.imageLowResMaxDimension))px")
+            Text("Long edge \(Int(appState.imageLowResMaxDimension))px · Quality \(Int(currentCompressionFactor * 100))%")
               .font(.caption)
               .foregroundStyle(.secondary)
           }
@@ -146,6 +146,21 @@ struct ImagePreviewView: View {
       mode: .lowResolution,
       maxDimension: appState.imageLowResMaxDimension
     ) ?? originalBytes
+  }
+
+  private var currentCompressionFactor: CGFloat {
+    guard
+      outputMode == .lowResolution,
+      let path = item.content.imageAssetPath,
+      let image = imageAssetStore.load(relativePath: path)
+    else {
+      return 1
+    }
+    return imageAssetStore.compressionFactor(
+      for: image,
+      mode: .lowResolution,
+      maxDimension: appState.imageLowResMaxDimension
+    )
   }
 
   private var sliderRange: ClosedRange<Double> {
