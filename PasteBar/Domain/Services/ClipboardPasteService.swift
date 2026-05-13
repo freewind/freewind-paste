@@ -280,10 +280,17 @@ final class ClipWorkflowService {
   }
 
   func delete(_ ids: Set<String>, permanently: Bool) {
+    let replacementID = replacementSelectionID(afterDeleting: ids)
     store.delete(ids, permanently: permanently)
     uiState.checkedIDs.subtract(ids)
     uiState.selectedIDs.subtract(ids)
-    uiState.normalizeSelection()
+
+    if let replacementID, uiState.visibleItems.contains(where: { $0.id == replacementID }) {
+      uiState.select([replacementID])
+    } else {
+      uiState.normalizeSelection()
+    }
+
     commitItems()
   }
 
@@ -384,5 +391,32 @@ final class ClipWorkflowService {
     }
 
     uiState.normalizeSelection()
+  }
+
+  private func replacementSelectionID(afterDeleting ids: Set<String>) -> String? {
+    guard !ids.isEmpty else {
+      return nil
+    }
+
+    let orderedIDs = uiState.visibleItems.map(\.id)
+    let deletedIndexes = orderedIDs.enumerated()
+      .compactMap { ids.contains($0.element) ? $0.offset : nil }
+
+    guard
+      let firstDeletedIndex = deletedIndexes.first,
+      let lastDeletedIndex = deletedIndexes.last
+    else {
+      return nil
+    }
+
+    if let nextID = orderedIDs[(lastDeletedIndex + 1)...].first(where: { !ids.contains($0) }) {
+      return nextID
+    }
+
+    guard firstDeletedIndex > 0 else {
+      return nil
+    }
+
+    return orderedIDs[..<firstDeletedIndex].last(where: { !ids.contains($0) })
   }
 }
