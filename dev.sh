@@ -3,43 +3,118 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEVELOPER_DIR="/System/Volumes/Data/Applications/Xcode.app/Contents/Developer"
-DERIVED_DATA_PATH="${ROOT_DIR}/.build-xcode/dev-derived-data"
 APP_NAME="PasteBar.app"
-APP_BUNDLE="${DERIVED_DATA_PATH}/Build/Products/Debug/${APP_NAME}"
-APP_BIN="${APP_BUNDLE}/Contents/MacOS/PasteBar"
-INJECTION_APP="/Applications/InjectionIII.app"
-LOG_PATH="${ROOT_DIR}/build/dev.log"
+PROJECT_FILE="${ROOT_DIR}/PasteBar.xcodeproj"
+SCHEME_NAME="PasteBar"
+CONFIGURATION="Debug"
+APP_LOG_PATH="${ROOT_DIR}/build/dev.log"
+BUILD_LOG_PATH="${ROOT_DIR}/build/xcodebuild.log"
+WATCH_INTERVAL="${WATCH_INTERVAL:-1}"
+WATCH_TARGETS=(
+  "PasteBar"
+  "Package.swift"
+  "project.yml"
+  "PasteBar.xcodeproj"
+)
 
 export DEVELOPER_DIR
 
-if [[ ! -d "${INJECTION_APP}" ]]; then
-  printf 'Missing InjectionIII: %s\n' "${INJECTION_APP}" >&2
-  printf 'Install it from: https://github.com/johnno1962/InjectionIII/releases\n' >&2
-  exit 1
-fi
-
 rtk mkdir -p "${ROOT_DIR}/build"
-rtk xcodegen generate --spec "${ROOT_DIR}/project.yml"
 
-rtk xcodebuild \
-  -project "${ROOT_DIR}/PasteBar.xcodeproj" \
-  -scheme PasteBar \
-  -configuration Debug \
-  -derivedDataPath "${DERIVED_DATA_PATH}" \
-  build
+generate_project() {
+  if [[ -f "${ROOT_DIR}/project.yml" ]]; then
+    rtk xcodegen generate --spec "${ROOT_DIR}/project.yml"
+  fi
+}
 
-if [[ ! -x "${APP_BIN}" ]]; then
-  printf 'Missing built app binary: %s\n' "${APP_BIN}" >&2
-  exit 1
-fi
+build_settings() {
+  export DEVELOPER_DIR
+  xcodebuild \
+    -project "${PROJECT_FILE}" \
+    -scheme "${SCHEME_NAME}" \
+    -configuration "${CONFIGURATION}" \
+    -showBuildSettings 2>/dev/null
+}
 
-rtk ln -sfn "${APP_BUNDLE}" "${ROOT_DIR}/build/${APP_NAME}"
-rtk pkill -x PasteBar || true
+resolve_build_dir() {
+  build_settings | awk '/^[[:space:]]*TARGET_BUILD_DIR = / { print substr($0, index($0, "=") + 2); exit }'
+}
 
-env \
-  INJECTION_DIRECTORIES="${ROOT_DIR}" \
-  "${APP_BIN}" >"${LOG_PATH}" 2>&1 &
+resolve_app_bundle() {
+  local build_dir
+  build_dir="$(resolve_build_dir)"
+  if [[ -z "${build_dir}" ]]; then
+    return 1
+  fi
 
-printf 'Launched app: %s\n' "${APP_BUNDLE}"
-printf 'Injection watch root: %s\n' "${ROOT_DIR}"
-printf 'Dev log: %s\n' "${LOG_PATH}"
+  printf '%s/%s\n' "${build_dir}" "${APP_NAME}"
+}
+
+build_app() {
+  printf '\n==> Building %s (%s)\n' "${SCHEME_NAME}" "${CONFIGURATION}"
+  if ! rtk xcodebuild \
+    -project "${PROJECT_FILE}" \
+    -scheme "${SCHEME_NAME}" \
+    -configuration "${CONFIGURATION}" \
+    build | tee "${BUILD_LOG_PATH}"; then
+    printf 'Build failed. Keep current app.\n' >&2
+    return 1
+  fi
+}
+
+restart_app() {
+  local app_bundle app_bin
+
+  app_bundle="$(resolve_app_bundle)"
+  app_bin="${app_bundle}/Contents/MacOS/PasteBar"
+
+  if [[ ! -x "${app_bin}" ]]; then
+    printf 'Missing built app binary: %s\n' "${app_bin}" >&2
+    return 1
+  fi
+
+  rtk ln -sfn "${app_bundle}" "${ROOT_DIR}/build/${APP_NAME}"
+  rtk pkill -x PasteBar || true
+  nohup "${app_bin}" >"${APP_LOG_PATH}" 2>&1 </dev/null &
+  disown || true
+
+  printf 'Launched app: %s\n' "${app_bundle}"
+  printf 'App log: %s\n' "${APP_LOG_PATH}"
+  printf 'Build log: %s\n' "${BUILD_LOG_PATH}"
+}
+
+watch_fingerprint() {
+  (
+    cd "${ROOT_DIR}"
+    git ls-files -co --exclude-standard -- "${WATCH_TARGETS[@]}" 2>/dev/null || true
+  ) |
+    LC_ALL=C sort |
+    while IFS= read -r rel_path; do
+      [[ -f "${ROOT_DIR}/${rel_path}" ]] || continue
+      stat -f '%m %N' "${ROOT_DIR}/${rel_path}"
+    done |
+    shasum -a 1 | awk '{print $1}'
+}
+
+generate_project
+build_app
+restart_app
+
+last_fingerprint="$(watch_fingerprint)"
+printf 'Watching for changes under: %s\n' "${WATCH_TARGETS[*]}"
+
+while true; do
+  sleep "${WATCH_INTERVAL}"
+  next_fingerprint="$(watch_fingerprint)"
+  if [[ "${next_fingerprint}" == "${last_fingerprint}" ]]; then
+    continue
+  fi
+
+  printf '\n==> Change detected\n'
+  sleep 0.2
+  generate_project
+  if build_app; then
+    restart_app
+    last_fingerprint="$(watch_fingerprint)"
+  fi
+done
