@@ -273,7 +273,7 @@ private final class HistoryRowRegistry {
     views[itemID] = nil
   }
 
-  func reveal(itemID: String, orderedIDs: [String], anchor: UnitPoint?, force: Bool) {
+  func reveal(itemID: String, orderedIDs: [String], anchor: UnitPoint?, force: Bool, retryCount: Int = 0) {
     cleanup()
 
     guard
@@ -288,6 +288,8 @@ private final class HistoryRowRegistry {
         itemID: itemID,
         orderedIDs: orderedIDs,
         anchor: anchor,
+        force: force,
+        retryCount: retryCount,
         scrollView: scrollView,
         documentView: documentView
       )
@@ -407,6 +409,8 @@ private final class HistoryRowRegistry {
     itemID: String,
     orderedIDs: [String],
     anchor: UnitPoint?,
+    force: Bool,
+    retryCount: Int,
     scrollView: NSScrollView,
     documentView: NSView
   ) {
@@ -447,6 +451,20 @@ private final class HistoryRowRegistry {
 
     scrollView.contentView.scroll(to: nextOrigin)
     scrollView.reflectScrolledClipView(scrollView.contentView)
+
+    guard retryCount < 3 else {
+      return
+    }
+
+    DispatchQueue.main.async {
+      self.reveal(
+        itemID: itemID,
+        orderedIDs: orderedIDs,
+        anchor: anchor,
+        force: force,
+        retryCount: retryCount + 1
+      )
+    }
   }
 
   private func visibleIndexRange(
