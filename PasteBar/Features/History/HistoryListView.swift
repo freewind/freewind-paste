@@ -1,117 +1,23 @@
+import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct HistoryListView: View {
   @Environment(AppState.self) private var appState
   @Environment(ClipViewState.self) private var uiState
-  @State private var draggedItemID: String?
-  @State private var dropTarget: HistoryDropTarget?
-  @State private var rowRegistry = HistoryRowRegistry()
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 0) {
-        ForEach(uiState.visibleItems) { item in
-          NativeClickableRow(
-            itemID: item.id,
-            registry: rowRegistry,
-            content: AnyView(
-              HistoryRowView(
-                item: item,
-                isDragActive: draggedItemID != nil,
-                isDragged: draggedItemID == item.id,
-                dropLine: dropLine(for: item.id)
-              )
-            ),
-            onClick: { event in
-              uiState.handleClick(
-                on: item.id,
-                orderedIDs: uiState.visibleItemIDs,
-                modifiers: event.modifierFlags
-              )
-            },
-            onDoubleClick: {
-              if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
-                uiState.handleClick(
-                  on: item.id,
-                  orderedIDs: uiState.visibleItemIDs,
-                  modifiers: []
-                )
-              }
-              appState.pasteSelection(mode: .normalEnter)
-            }
-          )
-            .id(item.id)
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .contextMenu {
-              let targetIDs = contextTargetIDs(for: item)
-              let isMultiTarget = targetIDs.count > 1
-
-              if uiState.currentTab != .trash {
-                Button("Paste") {
-                  appState.paste(targetIDs, mode: .normalEnter)
-                }
-
-                Divider()
-
-                Button(uiState.allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
-                  appState.setFavorite(targetIDs, favorite: !uiState.allFavorites(in: targetIDs))
-                }
-                Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
-                  appState.promptForLabel(for: item.id)
-                }
-                .disabled(isMultiTarget)
-
-                Button("Move to Trash") {
-                  appState.delete(targetIDs, permanently: false)
-                }
-              } else {
-                Button("Restore") {
-                  appState.restore(targetIDs)
-                }
-                Button("Delete Permanently") {
-                  appState.delete(targetIDs, permanently: true)
-                }
-              }
-            }
-            .onDrag {
-              if !uiState.selectedIDs.contains(item.id) {
-                uiState.select([item.id])
-              }
-              draggedItemID = item.id
-              dropTarget = nil
-              return NSItemProvider(object: item.id as NSString)
-            }
-            .onDrop(
-              of: [UTType.text],
-              delegate: HistoryRowDropDelegate(
-                targetItemID: item.id,
-                groupItemIDs: uiState.visibleItemIDs,
-                draggedItemID: $draggedItemID,
-                dropTarget: $dropTarget,
-                onMove: { offsets, destination in
-                  appState.moveItems(within: uiState.visibleItemIDs, from: offsets, to: destination)
-                }
-              )
-            )
-        }
-      }
-    }
-    .background(
-      DragEndMonitorView {
-        guard draggedItemID != nil || dropTarget != nil else {
-          return
-        }
-        draggedItemID = nil
-        dropTarget = nil
-      }
+    HistoryTableRepresentable(
+      appState: appState,
+      uiState: uiState,
+      visibleItems: uiState.visibleItems,
+      selectedIDs: uiState.selectedIDs,
+      checkedIDs: uiState.checkedIDs,
+      focusedID: uiState.focusedID,
+      currentTab: uiState.currentTab,
+      viewportMoveRequestID: uiState.viewportMoveRequestID
     )
-    .onAppear {
-      syncFocusedItemVisibility()
-    }
     .onChange(of: uiState.selectedIDs) { _, newValue in
-      guard draggedItemID == nil else {
+      guard !newValue.isEmpty else {
         return
       }
 
@@ -123,366 +29,625 @@ struct HistoryListView: View {
         uiState.focus(id)
       }
     }
-    .onChange(of: uiState.focusedID) { _, _ in
-      guard draggedItemID == nil else {
-        return
-      }
-      syncFocusedItemVisibility()
-    }
-    .onChange(of: uiState.viewportMoveRequestID) { _, _ in
-      guard draggedItemID == nil else {
-        return
-      }
-      performViewportMove()
-    }
-  }
-
-  private func syncFocusedItemVisibility() {
-    guard let focusedID = uiState.focusedID else {
-      return
-    }
-
-    rowRegistry.revealMinimally(itemID: focusedID, orderedIDs: uiState.visibleItemIDs)
-  }
-
-  private func performViewportMove() {
-    guard let command = uiState.consumePendingViewportMoveCommand() else {
-      return
-    }
-
-    let orderedIDs = uiState.visibleItemIDs
-    guard !orderedIDs.isEmpty else {
-      return
-    }
-
-    switch command {
-    case let .page(direction):
-      rowRegistry.scrollPage(by: direction, orderedIDs: orderedIDs)
-    case let .boundary(isStart):
-      rowRegistry.scrollToBoundary(isStart: isStart, orderedIDs: orderedIDs)
-    }
-  }
-
-  private func dropLine(for itemID: String) -> HistoryRowView.DropLine {
-    guard let dropTarget, dropTarget.itemID == itemID else {
-      return .none
-    }
-    return dropTarget.isAfter ? .after : .before
-  }
-
-  private func contextTargetIDs(for item: ClipItem) -> Set<String> {
-    if uiState.selectedIDs.count > 1, uiState.selectedIDs.contains(item.id) {
-      return uiState.selectedIDs
-    }
-    return [item.id]
   }
 }
 
-@MainActor
-private final class HistoryRowRegistry {
-  private final class WeakRowView {
-    weak var value: NativeClickableHostingView?
-
-    init(_ value: NativeClickableHostingView) {
-      self.value = value
-    }
-  }
-
-  private var views: [String: WeakRowView] = [:]
-
-  func register(_ view: NativeClickableHostingView, for itemID: String) {
-    views[itemID] = WeakRowView(view)
-    cleanup()
-  }
-
-  func unregister(itemID: String, view: NativeClickableHostingView) {
-    guard let current = views[itemID]?.value, current === view else {
-      return
-    }
-    views[itemID] = nil
-  }
-
-  func revealMinimally(itemID: String, orderedIDs: [String]) {
-    cleanup()
-
-    guard
-      let scrollView = orderedIDs.lazy.compactMap({ self.views[$0]?.value?.enclosingScrollView }).first,
-      let documentView = scrollView.documentView
-    else {
-      return
-    }
-
-    scrollView.layoutSubtreeIfNeeded()
-    documentView.layoutSubtreeIfNeeded()
-
-    guard let rowView = views[itemID]?.value else {
-      return
-    }
-
-    let rowFrame = rowView.convert(rowView.bounds, to: documentView)
-    let visibleRect = scrollView.contentView.documentVisibleRect
-
-    if rowFrame.minY >= visibleRect.minY, rowFrame.maxY <= visibleRect.maxY {
-      return
-    }
-
-    var nextOrigin = visibleRect.origin
-    if rowFrame.minY < visibleRect.minY {
-      nextOrigin.y = rowFrame.minY
-    } else {
-      nextOrigin.y = rowFrame.maxY - visibleRect.height
-    }
-
-    let maxY = max(documentView.bounds.height - visibleRect.height, 0)
-    nextOrigin.y = min(max(nextOrigin.y, 0), maxY)
-    scroll(scrollView: scrollView, toY: nextOrigin.y)
-  }
-
-  func scrollPage(by direction: Int, orderedIDs: [String]) {
-    guard direction != 0 else {
-      return
-    }
-
-    cleanup()
-
-    guard
-      let scrollView = orderedIDs.lazy.compactMap({ self.views[$0]?.value?.enclosingScrollView }).first,
-      let documentView = scrollView.documentView
-    else {
-      return
-    }
-
-    let visibleRect = scrollView.contentView.documentVisibleRect
-    let maxY = max(documentView.bounds.height - visibleRect.height, 0)
-    let nextY = visibleRect.origin.y + (CGFloat(direction) * visibleRect.height)
-    scroll(scrollView: scrollView, toY: min(max(nextY, 0), maxY))
-  }
-
-  func scrollToBoundary(isStart: Bool, orderedIDs: [String]) {
-    cleanup()
-
-    guard
-      let scrollView = orderedIDs.lazy.compactMap({ self.views[$0]?.value?.enclosingScrollView }).first,
-      let documentView = scrollView.documentView
-    else {
-      return
-    }
-
-    let visibleRect = scrollView.contentView.documentVisibleRect
-    let maxY = max(documentView.bounds.height - visibleRect.height, 0)
-    scroll(scrollView: scrollView, toY: isStart ? 0 : maxY)
-  }
-
-  private func cleanup() {
-    views = views.filter { $0.value.value != nil }
-  }
-
-  private func scroll(scrollView: NSScrollView, toY y: CGFloat) {
-    var nextOrigin = scrollView.contentView.documentVisibleRect.origin
-    nextOrigin.y = y
-    scrollView.contentView.scroll(to: nextOrigin)
-    scrollView.reflectScrolledClipView(scrollView.contentView)
-  }
-}
-
-private struct NativeClickableRow: NSViewRepresentable {
-  let itemID: String
-  let registry: HistoryRowRegistry
-  let content: AnyView
-  let onClick: (NSEvent) -> Void
-  let onDoubleClick: () -> Void
-
-  func makeNSView(context: Context) -> NativeClickableHostingView {
-    let view = NativeClickableHostingView(rootView: content)
-    view.onClick = onClick
-    view.onDoubleClick = onDoubleClick
-    registry.register(view, for: itemID)
-    return view
-  }
-
-  func updateNSView(_ nsView: NativeClickableHostingView, context: Context) {
-    nsView.rootView = content
-    nsView.onClick = onClick
-    nsView.onDoubleClick = onDoubleClick
-    registry.register(nsView, for: itemID)
-  }
-
-  static func dismantleNSView(_ nsView: NativeClickableHostingView, coordinator: ()) {
-    // no-op; registry cleanup happens on next register/reveal pass
-  }
-}
-
-private final class NativeClickableHostingView: NSHostingView<AnyView> {
-  var onClick: ((NSEvent) -> Void)?
-  var onDoubleClick: (() -> Void)?
-
-  override func mouseDown(with event: NSEvent) {
-    if shouldIgnoreRowClick(for: event) {
-      super.mouseDown(with: event)
-      return
-    }
-
-    onClick?(event)
-    super.mouseDown(with: event)
-
-    if event.clickCount == 2 {
-      onDoubleClick?()
-    }
-  }
-
-  private func shouldIgnoreRowClick(for event: NSEvent) -> Bool {
-    let point = convert(event.locationInWindow, from: nil)
-    guard let hitView = hitTest(point) else {
-      return false
-    }
-
-    return hitView.hasAncestor(before: self) { view in
-      view is NSButton || view is NSControl
-    }
-  }
-}
-
-private extension NSView {
-  func hasAncestor(before ancestor: NSView, matching: (NSView) -> Bool) -> Bool {
-    var current: NSView? = self
-    while let view = current, view !== ancestor {
-      if matching(view) {
-        return true
-      }
-      current = view.superview
-    }
-    return false
-  }
-}
-
-private struct DragEndMonitorView: NSViewRepresentable {
-  let onMouseUp: () -> Void
+private struct HistoryTableRepresentable: NSViewRepresentable {
+  let appState: AppState
+  let uiState: ClipViewState
+  let visibleItems: [ClipItem]
+  let selectedIDs: Set<String>
+  let checkedIDs: Set<String>
+  let focusedID: String?
+  let currentTab: MainTab
+  let viewportMoveRequestID: Int
 
   func makeCoordinator() -> Coordinator {
     Coordinator()
   }
 
-  func makeNSView(context: Context) -> NSView {
-    let view = NSView(frame: .zero)
-    context.coordinator.start(onMouseUp: onMouseUp)
-    return view
+  func makeNSView(context: Context) -> NSScrollView {
+    context.coordinator.makeScrollView(parent: self)
   }
 
-  func updateNSView(_ nsView: NSView, context: Context) {
-    context.coordinator.onMouseUp = onMouseUp
-  }
-
-  static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
-    coordinator.stop()
-  }
-
-  final class Coordinator {
-    var monitor: Any?
-    var onMouseUp: (() -> Void)?
-
-    func start(onMouseUp: @escaping () -> Void) {
-      self.onMouseUp = onMouseUp
-      stop()
-      monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak self] event in
-        self?.onMouseUp?()
-        return event
-      }
-    }
-
-    func stop() {
-      if let monitor {
-        NSEvent.removeMonitor(monitor)
-        self.monitor = nil
-      }
-    }
+  func updateNSView(_ nsView: NSScrollView, context: Context) {
+    context.coordinator.update(parent: self)
   }
 }
 
-private struct HistoryDropTarget: Equatable {
-  let itemID: String
-  let isAfter: Bool
-}
+private extension HistoryTableRepresentable {
+  struct RenderState: Equatable {
+    let visibleItems: [ClipItem]
+    let selectedIDs: Set<String>
+    let checkedIDs: Set<String>
+    let focusedID: String?
+    let currentTab: MainTab
+    let viewportMoveRequestID: Int
 
-private struct HistoryRowDropDelegate: DropDelegate {
-  let targetItemID: String
-  let groupItemIDs: [String]
-  @Binding var draggedItemID: String?
-  @Binding var dropTarget: HistoryDropTarget?
-  let onMove: (IndexSet, Int) -> Void
-
-  func dropEntered(info: DropInfo) {
-    updateDropTarget(info: info)
-  }
-
-  func dropExited(info: DropInfo) {
-    guard dropTarget?.itemID == targetItemID else {
-      return
-    }
-    dropTarget = nil
-  }
-
-  func performDrop(info: DropInfo) -> Bool {
-    guard
-      let draggedItemID,
-      draggedItemID != targetItemID,
-      let from = groupItemIDs.firstIndex(of: draggedItemID),
-      let dropTarget,
-      dropTarget.itemID == targetItemID,
-      let to = groupItemIDs.firstIndex(of: targetItemID)
-    else {
-      self.draggedItemID = nil
-      self.dropTarget = nil
-      return false
+    var visibleIDs: [String] {
+      visibleItems.map(\.id)
     }
 
-    if isNoopMove(from: from, to: to, isAfter: dropTarget.isAfter) {
-      self.draggedItemID = nil
-      self.dropTarget = nil
+    func rowState(at index: Int) -> HistoryTableRowState {
+      let item = visibleItems[index]
+      return HistoryTableRowState(
+        item: item,
+        isSelected: selectedIDs.contains(item.id),
+        isFocused: focusedID == item.id,
+        isChecked: checkedIDs.contains(item.id),
+        showsFavorite: currentTab != .trash
+      )
+    }
+  }
+
+  @MainActor
+  final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate {
+    private enum Column: String, CaseIterable {
+      case checked
+      case favorite
+      case content
+
+      var identifier: NSUserInterfaceItemIdentifier {
+        NSUserInterfaceItemIdentifier(rawValue)
+      }
+    }
+
+    private weak var tableView: HistoryTableView?
+    private weak var scrollView: NSScrollView?
+    private var parent: HistoryTableRepresentable?
+    private var renderState = RenderState(
+      visibleItems: [],
+      selectedIDs: [],
+      checkedIDs: [],
+      focusedID: nil,
+      currentTab: .history,
+      viewportMoveRequestID: 0
+    )
+    private let contextMenu = NSMenu()
+    private var contextMenuItemID: String?
+
+    func makeScrollView(parent: HistoryTableRepresentable) -> NSScrollView {
+      self.parent = parent
+
+      let scrollView = NSScrollView()
+      scrollView.drawsBackground = false
+      scrollView.borderType = .noBorder
+      scrollView.hasVerticalScroller = true
+      scrollView.hasHorizontalScroller = false
+      scrollView.autohidesScrollers = true
+
+      let tableView = HistoryTableView()
+      tableView.headerView = nil
+      tableView.backgroundColor = .clear
+      tableView.selectionHighlightStyle = .none
+      tableView.allowsMultipleSelection = true
+      tableView.allowsEmptySelection = true
+      tableView.allowsColumnSelection = false
+      tableView.allowsTypeSelect = false
+      tableView.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
+      tableView.intercellSpacing = .zero
+      tableView.rowHeight = 28
+      tableView.focusRingType = .none
+      tableView.gridStyleMask = []
+      tableView.usesAlternatingRowBackgroundColors = false
+      tableView.dataSource = self
+      tableView.delegate = self
+      tableView.menu = contextMenu
+      tableView.registerForDraggedTypes([.string])
+      tableView.setDraggingSourceOperationMask(.move, forLocal: true)
+      contextMenu.delegate = self
+
+      for column in Column.allCases {
+        let tableColumn = NSTableColumn(identifier: column.identifier)
+        tableColumn.resizingMask = column == .content ? .autoresizingMask : []
+        switch column {
+        case .checked, .favorite:
+          tableColumn.width = 28
+          tableColumn.minWidth = 28
+          tableColumn.maxWidth = 28
+        case .content:
+          tableColumn.minWidth = 180
+        }
+        tableView.addTableColumn(tableColumn)
+      }
+
+      tableView.onRowClick = { [weak self] row, modifiers in
+        self?.handleRowClick(row: row, modifiers: modifiers)
+      }
+      tableView.onRowDoubleClick = { [weak self] row in
+        self?.handleRowDoubleClick(row: row)
+      }
+      tableView.onContextMenu = { [weak self] row in
+        self?.prepareContextMenu(for: row)
+      }
+      tableView.dragItemProvider = { [weak self] row, event in
+        self?.makeDragItem(for: row, event: event)
+      }
+
+      scrollView.documentView = tableView
+      self.tableView = tableView
+      self.scrollView = scrollView
+
+      update(parent: parent)
+      return scrollView
+    }
+
+    func update(parent: HistoryTableRepresentable) {
+      self.parent = parent
+
+      guard let tableView else {
+        return
+      }
+
+      let nextState = RenderState(
+        visibleItems: parent.visibleItems,
+        selectedIDs: parent.selectedIDs,
+        checkedIDs: parent.checkedIDs,
+        focusedID: parent.focusedID,
+        currentTab: parent.currentTab,
+        viewportMoveRequestID: parent.viewportMoveRequestID
+      )
+
+      let previousState = renderState
+      let needsFullReload = previousState.visibleItems.map(\.id) != nextState.visibleItems.map(\.id)
+        || previousState.currentTab != nextState.currentTab
+
+      renderState = nextState
+
+      if needsFullReload {
+        tableView.reloadData()
+      } else {
+        reloadChangedRows(from: previousState, to: nextState)
+      }
+
+      syncSelection(in: tableView)
+      updateVisibleRowViews(in: tableView)
+      performViewportMoveIfNeeded(from: previousState, to: nextState, in: tableView)
+      syncFocusedRowVisibility(from: previousState, to: nextState, in: tableView, force: needsFullReload)
+    }
+
+    func numberOfRows(in tableView: NSTableView) -> Int {
+      renderState.visibleItems.count
+    }
+
+    func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+      28
+    }
+
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+      let identifier = NSUserInterfaceItemIdentifier("HistoryTableRowView")
+      let rowView = (tableView.makeView(withIdentifier: identifier, owner: nil) as? HistoryTableRowView)
+        ?? HistoryTableRowView()
+      rowView.identifier = identifier
+      rowView.apply(renderState.rowState(at: row))
+      return rowView
+    }
+
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+      guard
+        let tableColumn,
+        let column = Column(rawValue: tableColumn.identifier.rawValue)
+      else {
+        return nil
+      }
+
+      let rowState = renderState.rowState(at: row)
+      switch column {
+      case .checked:
+        let cell = dequeueCheckCell(from: tableView)
+        cell.configure(
+          rowState: rowState,
+          onToggle: { [weak self] in
+            self?.toggleChecked(row: row)
+          }
+        )
+        return cell
+      case .favorite:
+        let cell = dequeueFavoriteCell(from: tableView)
+        cell.configure(
+          rowState: rowState,
+          onToggle: { [weak self] in
+            self?.toggleFavorite(row: row)
+          }
+        )
+        return cell
+      case .content:
+        let cell = dequeueContentCell(from: tableView)
+        cell.configure(rowState: rowState)
+        return cell
+      }
+    }
+
+    func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
+      NSString(string: renderState.visibleItems[row].id)
+    }
+
+    func tableView(
+      _ tableView: NSTableView,
+      validateDrop info: NSDraggingInfo,
+      proposedRow row: Int,
+      proposedDropOperation dropOperation: NSTableView.DropOperation
+    ) -> NSDragOperation {
+      guard
+        let draggedItemID = draggingItemID(from: info),
+        renderState.visibleIDs.contains(draggedItemID)
+      else {
+        return []
+      }
+
+      let destination = destinationRow(for: info, proposedRow: row, tableView: tableView)
+      tableView.setDropRow(destination, dropOperation: .above)
+      return .move
+    }
+
+    func tableView(_ tableView: NSTableView, acceptDrop info: NSDraggingInfo, row: Int, dropOperation: NSTableView.DropOperation) -> Bool {
+      guard
+        let parent,
+        let draggedItemID = draggingItemID(from: info),
+        let sourceIndex = renderState.visibleIDs.firstIndex(of: draggedItemID)
+      else {
+        return false
+      }
+
+      let destination = min(max(row, 0), renderState.visibleItems.count)
+      if destination == sourceIndex || destination == sourceIndex + 1 {
+        return false
+      }
+
+      parent.appState.moveItems(
+        within: renderState.visibleIDs,
+        from: IndexSet(integer: sourceIndex),
+        to: destination
+      )
       return true
     }
 
-    let destination = dropTarget.isAfter ? to + 1 : to
-    onMove(IndexSet(integer: from), destination)
-    self.draggedItemID = nil
-    self.dropTarget = nil
-    return true
-  }
-
-  func dropUpdated(info: DropInfo) -> DropProposal? {
-    updateDropTarget(info: info)
-    return DropProposal(operation: .move)
-  }
-
-  func validateDrop(info: DropInfo) -> Bool {
-    guard let draggedItemID else {
-      return false
+    func menuNeedsUpdate(_ menu: NSMenu) {
+      rebuildContextMenu(menu)
     }
 
-    return draggedItemID != targetItemID
-  }
+    private func reloadChangedRows(from previousState: RenderState, to nextState: RenderState) {
+      guard let tableView else {
+        return
+      }
 
-  private func updateDropTarget(info: DropInfo) {
-    guard
-      let draggedItemID,
-      draggedItemID != targetItemID
-    else {
-      return
+      let changedIndexes = nextState.visibleItems.indices.filter { index in
+        previousState.rowState(at: index) != nextState.rowState(at: index)
+      }
+
+      guard !changedIndexes.isEmpty else {
+        return
+      }
+
+      tableView.reloadData(
+        forRowIndexes: IndexSet(changedIndexes),
+        columnIndexes: IndexSet(integersIn: 0..<tableView.numberOfColumns)
+      )
     }
 
-    let isAfter = info.location.y > 13
-    dropTarget = HistoryDropTarget(itemID: targetItemID, isAfter: isAfter)
-  }
+    private func syncSelection(in tableView: NSTableView) {
+      let indexes = IndexSet(
+        renderState.visibleItems.enumerated().compactMap { index, item in
+          renderState.selectedIDs.contains(item.id) ? index : nil
+        }
+      )
 
-  private func isNoopMove(from: Int, to: Int, isAfter: Bool) -> Bool {
-    if from == to {
-      return true
+      if tableView.selectedRowIndexes != indexes {
+        tableView.selectRowIndexes(indexes, byExtendingSelection: false)
+      }
     }
-    if isAfter, from == to + 1 {
-      return true
+
+    private func updateVisibleRowViews(in tableView: NSTableView) {
+      let visibleRows = tableView.rows(in: tableView.visibleRect)
+      let startRow = max(visibleRows.location, 0)
+      let endRow = min(visibleRows.location + visibleRows.length, renderState.visibleItems.count)
+      guard startRow < endRow else {
+        return
+      }
+
+      for row in startRow..<endRow {
+        if let rowView = tableView.rowView(atRow: row, makeIfNecessary: false) as? HistoryTableRowView {
+          rowView.apply(renderState.rowState(at: row))
+        }
+      }
     }
-    if !isAfter, from + 1 == to {
-      return true
+
+    private func performViewportMoveIfNeeded(from previousState: RenderState, to nextState: RenderState, in tableView: NSTableView) {
+      guard
+        previousState.viewportMoveRequestID != nextState.viewportMoveRequestID,
+        let command = parent?.uiState.consumePendingViewportMoveCommand()
+      else {
+        return
+      }
+
+      tableView.layoutSubtreeIfNeeded()
+
+      switch command {
+      case let .page(direction):
+        scrollPage(direction: direction, in: tableView)
+      case let .boundary(isStart):
+        scrollToBoundary(isStart: isStart, in: tableView)
+      }
     }
-    return false
+
+    private func syncFocusedRowVisibility(from previousState: RenderState, to nextState: RenderState, in tableView: NSTableView, force: Bool) {
+      guard force || previousState.focusedID != nextState.focusedID else {
+        return
+      }
+
+      guard
+        let focusedID = nextState.focusedID,
+        let index = nextState.visibleIDs.firstIndex(of: focusedID)
+      else {
+        return
+      }
+
+      tableView.scrollRowToVisible(index)
+    }
+
+    private func scrollPage(direction: Int, in tableView: NSTableView) {
+      guard direction != 0, let scrollView else {
+        return
+      }
+
+      let visibleRect = scrollView.contentView.documentVisibleRect
+      let maxY = max(tableView.bounds.height - visibleRect.height, 0)
+      let nextY = visibleRect.origin.y + (CGFloat(direction) * visibleRect.height)
+      scrollView.contentView.scroll(to: NSPoint(x: visibleRect.origin.x, y: min(max(nextY, 0), maxY)))
+      scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    private func scrollToBoundary(isStart: Bool, in tableView: NSTableView) {
+      guard let scrollView else {
+        return
+      }
+
+      let visibleRect = scrollView.contentView.documentVisibleRect
+      let maxY = max(tableView.bounds.height - visibleRect.height, 0)
+      let targetY: CGFloat = isStart ? 0 : maxY
+      scrollView.contentView.scroll(to: NSPoint(x: visibleRect.origin.x, y: targetY))
+      scrollView.reflectScrolledClipView(scrollView.contentView)
+    }
+
+    private func handleRowClick(row: Int, modifiers: NSEvent.ModifierFlags) {
+      guard let parent else {
+        return
+      }
+
+      let itemID = renderState.visibleItems[row].id
+      parent.uiState.handleClick(
+        on: itemID,
+        orderedIDs: renderState.visibleIDs,
+        modifiers: modifiers
+      )
+    }
+
+    private func handleRowDoubleClick(row: Int) {
+      guard let parent else {
+        return
+      }
+
+      let itemID = renderState.visibleItems[row].id
+      if !renderState.selectedIDs.contains(itemID) || renderState.selectedIDs.count <= 1 {
+        parent.uiState.handleClick(
+          on: itemID,
+          orderedIDs: renderState.visibleIDs,
+          modifiers: []
+        )
+      }
+      parent.appState.pasteSelection(mode: .normalEnter)
+    }
+
+    private func toggleChecked(row: Int) {
+      guard let parent else {
+        return
+      }
+
+      parent.uiState.toggleChecked(renderState.visibleItems[row].id)
+    }
+
+    private func toggleFavorite(row: Int) {
+      guard let parent else {
+        return
+      }
+
+      parent.appState.toggleFavorite(for: renderState.visibleItems[row].id)
+    }
+
+    private func prepareContextMenu(for row: Int) {
+      guard renderState.visibleItems.indices.contains(row) else {
+        contextMenuItemID = nil
+        return
+      }
+
+      contextMenuItemID = renderState.visibleItems[row].id
+    }
+
+    private func rebuildContextMenu(_ menu: NSMenu) {
+      menu.removeAllItems()
+
+      guard
+        let parent,
+        let item = contextMenuItem
+      else {
+        return
+      }
+
+      let targetIDs = contextTargetIDs(for: item)
+      let isMultiTarget = targetIDs.count > 1
+
+      if renderState.currentTab != .trash {
+        menuItem("Paste", action: #selector(handleContextPaste), in: menu)
+
+        menu.addItem(.separator())
+
+        menuItem(
+          parent.uiState.allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite",
+          action: #selector(handleContextFavorite),
+          in: menu
+        )
+
+        let labelItem = menuItem(
+          item.label.isEmpty ? "Add Label" : "Edit Label",
+          action: #selector(handleContextLabel),
+          in: menu
+        )
+        labelItem.isEnabled = !isMultiTarget
+
+        menuItem("Move to Trash", action: #selector(handleContextTrash), in: menu)
+      } else {
+        menuItem("Restore", action: #selector(handleContextRestore), in: menu)
+        menuItem("Delete Permanently", action: #selector(handleContextDeletePermanently), in: menu)
+      }
+    }
+
+    @objc
+    private func handleContextPaste() {
+      guard let parent else {
+        return
+      }
+      parent.appState.paste(contextTargetIDs(), mode: .normalEnter)
+    }
+
+    @objc
+    private func handleContextFavorite() {
+      guard let parent else {
+        return
+      }
+
+      let targetIDs = contextTargetIDs()
+      parent.appState.setFavorite(targetIDs, favorite: !parent.uiState.allFavorites(in: targetIDs))
+    }
+
+    @objc
+    private func handleContextLabel() {
+      guard let parent, let item = contextMenuItem else {
+        return
+      }
+      parent.appState.promptForLabel(for: item.id)
+    }
+
+    @objc
+    private func handleContextTrash() {
+      guard let parent else {
+        return
+      }
+      parent.appState.delete(contextTargetIDs(), permanently: false)
+    }
+
+    @objc
+    private func handleContextRestore() {
+      guard let parent else {
+        return
+      }
+      parent.appState.restore(contextTargetIDs())
+    }
+
+    @objc
+    private func handleContextDeletePermanently() {
+      guard let parent else {
+        return
+      }
+      parent.appState.delete(contextTargetIDs(), permanently: true)
+    }
+
+    private var contextMenuItem: ClipItem? {
+      guard let contextMenuItemID else {
+        return nil
+      }
+      return renderState.visibleItems.first(where: { $0.id == contextMenuItemID })
+    }
+
+    private func contextTargetIDs(for item: ClipItem) -> Set<String> {
+      if renderState.selectedIDs.count > 1, renderState.selectedIDs.contains(item.id) {
+        return renderState.selectedIDs
+      }
+      return [item.id]
+    }
+
+    private func contextTargetIDs() -> Set<String> {
+      guard let item = contextMenuItem else {
+        return []
+      }
+      return contextTargetIDs(for: item)
+    }
+
+    private func dequeueCheckCell(from tableView: NSTableView) -> HistoryCheckCellView {
+      let identifier = NSUserInterfaceItemIdentifier("HistoryCheckCellView")
+      let cell = (tableView.makeView(withIdentifier: identifier, owner: nil) as? HistoryCheckCellView)
+        ?? HistoryCheckCellView()
+      cell.identifier = identifier
+      return cell
+    }
+
+    private func dequeueFavoriteCell(from tableView: NSTableView) -> HistoryFavoriteCellView {
+      let identifier = NSUserInterfaceItemIdentifier("HistoryFavoriteCellView")
+      let cell = (tableView.makeView(withIdentifier: identifier, owner: nil) as? HistoryFavoriteCellView)
+        ?? HistoryFavoriteCellView()
+      cell.identifier = identifier
+      return cell
+    }
+
+    private func dequeueContentCell(from tableView: NSTableView) -> HistoryContentCellView {
+      let identifier = NSUserInterfaceItemIdentifier("HistoryContentCellView")
+      let cell = (tableView.makeView(withIdentifier: identifier, owner: nil) as? HistoryContentCellView)
+        ?? HistoryContentCellView()
+      cell.identifier = identifier
+      return cell
+    }
+
+    private func makeDragItem(for row: Int, event: NSEvent) -> NSDraggingItem? {
+      guard let tableView, renderState.visibleItems.indices.contains(row) else {
+        return nil
+      }
+
+      let itemID = renderState.visibleItems[row].id
+      let pasteboardItem = NSPasteboardItem()
+      pasteboardItem.setString(itemID, forType: .string)
+
+      let draggingItem = NSDraggingItem(pasteboardWriter: pasteboardItem)
+      let rowRect = tableView.rect(ofRow: row)
+      let image = rowDragImage(for: rowRect, in: tableView)
+      draggingItem.setDraggingFrame(rowRect, contents: image)
+      return draggingItem
+    }
+
+    @discardableResult
+    private func menuItem(_ title: String, action: Selector, in menu: NSMenu) -> NSMenuItem {
+      let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+      item.target = self
+      menu.addItem(item)
+      return item
+    }
+
+    private func draggingItemID(from info: NSDraggingInfo) -> String? {
+      info.draggingPasteboard.string(forType: .string)
+    }
+
+    private func destinationRow(for info: NSDraggingInfo, proposedRow _: Int, tableView: NSTableView) -> Int {
+      let point = tableView.convert(info.draggingLocation, from: nil)
+      let hoveredRow = tableView.row(at: point)
+      guard hoveredRow >= 0 else {
+        return renderState.visibleItems.count
+      }
+
+      let rowRect = tableView.rect(ofRow: hoveredRow)
+      return point.y > rowRect.midY ? hoveredRow : hoveredRow + 1
+    }
+
+    private func rowDragImage(for rowRect: NSRect, in tableView: NSTableView) -> NSImage? {
+      guard rowRect.width > 0, rowRect.height > 0 else {
+        return nil
+      }
+
+      guard let rep = tableView.bitmapImageRepForCachingDisplay(in: rowRect) else {
+        return nil
+      }
+
+      tableView.cacheDisplay(in: rowRect, to: rep)
+      let image = NSImage(size: rowRect.size)
+      image.addRepresentation(rep)
+      return image
+    }
   }
 }
