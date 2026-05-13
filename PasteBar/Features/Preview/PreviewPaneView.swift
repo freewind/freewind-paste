@@ -167,15 +167,15 @@ struct PreviewPaneView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        Text(multiSelectionText(for: item))
-          .font(.system(size: 14, design: .monospaced))
-          .textSelection(.enabled)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.horizontal, 14)
-          .padding(.vertical, 12)
-          .background(Color(NSColor.textBackgroundColor))
-          .clipShape(RoundedRectangle(cornerRadius: 8))
-          .fixedSize(horizontal: false, vertical: true)
+        TextPreviewView(
+          item: item,
+          showsHeader: false,
+          showsMetrics: false,
+          minEditorHeight: 80,
+          maxEditorHeight: 320,
+          expandsToFill: false,
+          allowsScrolling: false
+        )
       }
     case .image:
       ImagePreviewView(
@@ -208,12 +208,6 @@ struct PreviewPaneView: View {
       }
       .joined(separator: "\u{1F}")
   }
-
-  private func multiSelectionText(for item: ClipItem) -> String {
-    let text = item.content.text ?? ""
-    return text.isEmpty ? " " : text
-  }
-
   private func metaHeader(item: ClipItem) -> some View {
     HStack {
       if !item.label.isEmpty {
