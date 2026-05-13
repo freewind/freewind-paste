@@ -144,10 +144,15 @@ struct HistoryListView: View {
     }
 
     let orderedIDs = uiState.visibleItems.map(\.id)
+    let requestID = rowRegistry.beginAsyncRequest()
     DispatchQueue.main.async {
+      guard rowRegistry.isCurrentAsyncRequest(requestID) else {
+        return
+      }
       rowRegistry.revealMinimally(
         itemID: focusedID,
-        orderedIDs: orderedIDs
+        orderedIDs: orderedIDs,
+        requestID: requestID
       )
     }
   }
@@ -164,7 +169,11 @@ struct HistoryListView: View {
     }
 
     if rowRegistry.scrollPage(by: direction, orderedIDs: orderedIDs) {
+      let requestID = rowRegistry.beginAsyncRequest()
       DispatchQueue.main.async {
+        guard rowRegistry.isCurrentAsyncRequest(requestID) else {
+          return
+        }
         let nextID = rowRegistry.edgeVisibleItemID(
           orderedIDs: orderedIDs,
           direction: direction
@@ -222,6 +231,16 @@ private final class HistoryRowRegistry {
   }
 
   private var views: [String: WeakRowView] = [:]
+  private var currentAsyncRequestID: Int = 0
+
+  func beginAsyncRequest() -> Int {
+    currentAsyncRequestID += 1
+    return currentAsyncRequestID
+  }
+
+  func isCurrentAsyncRequest(_ requestID: Int) -> Bool {
+    requestID == currentAsyncRequestID
+  }
 
   func register(_ view: NativeClickableHostingView, for itemID: String) {
     views[itemID] = WeakRowView(view)
@@ -235,8 +254,12 @@ private final class HistoryRowRegistry {
     views[itemID] = nil
   }
 
-  func revealMinimally(itemID: String, orderedIDs: [String], retryCount: Int = 0) {
+  func revealMinimally(itemID: String, orderedIDs: [String], requestID: Int, retryCount: Int = 0) {
     cleanup()
+
+    guard isCurrentAsyncRequest(requestID) else {
+      return
+    }
 
     guard
       let scrollView = orderedIDs.lazy.compactMap({ self.views[$0]?.value?.enclosingScrollView }).first,
@@ -249,6 +272,7 @@ private final class HistoryRowRegistry {
       revealMissingRow(
         itemID: itemID,
         orderedIDs: orderedIDs,
+        requestID: requestID,
         retryCount: retryCount,
         scrollView: scrollView,
         documentView: documentView
@@ -360,10 +384,15 @@ private final class HistoryRowRegistry {
   private func revealMissingRow(
     itemID: String,
     orderedIDs: [String],
+    requestID: Int,
     retryCount: Int,
     scrollView: NSScrollView,
     documentView: NSView
   ) {
+    guard isCurrentAsyncRequest(requestID) else {
+      return
+    }
+
     guard
       let targetIndex = orderedIDs.firstIndex(of: itemID),
       let visibleRange = visibleIndexRange(orderedIDs: orderedIDs, documentView: documentView, scrollView: scrollView)
@@ -403,9 +432,13 @@ private final class HistoryRowRegistry {
     }
 
     DispatchQueue.main.async {
+      guard self.isCurrentAsyncRequest(requestID) else {
+        return
+      }
       self.revealMinimally(
         itemID: itemID,
         orderedIDs: orderedIDs,
+        requestID: requestID,
         retryCount: retryCount + 1
       )
     }
