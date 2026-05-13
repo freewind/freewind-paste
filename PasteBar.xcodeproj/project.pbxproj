@@ -310,13 +310,6 @@
 			path = Preview;
 			sourceTree = "<group>";
 		};
-		"TEMP_A4C44DCB-2B09-45E5-986A-DBB64EE58ADC" /* PreviewAssets */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = PreviewAssets;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
