@@ -174,14 +174,10 @@ struct PreviewPaneView: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        TextPreviewView(
-          item: item,
-          showsHeader: false,
-          showsMetrics: false,
-          minEditorHeight: 36,
-          maxEditorHeight: 320,
-          expandsToFill: false,
-          allowsScrolling: false
+        CompactTextPreviewView(
+          text: item.content.text ?? "",
+          minHeight: 36,
+          maxHeight: 320
         )
       }
     case .image:
@@ -289,5 +285,83 @@ struct PreviewPaneView: View {
     case .file:
       return (item.content.filePaths ?? []).joined(separator: "\n")
     }
+  }
+}
+
+private struct CompactTextPreviewView: View {
+  let text: String
+  let minHeight: CGFloat
+  let maxHeight: CGFloat
+
+  @State private var contentHeight: CGFloat = 44
+
+  var body: some View {
+    ZStack(alignment: .topLeading) {
+      Text(measurementText)
+        .font(.system(size: 14))
+        .lineSpacing(4)
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
+        .foregroundStyle(.clear)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+          GeometryReader { proxy in
+            Color.clear
+              .preference(key: CompactTextPreviewHeightPreferenceKey.self, value: proxy.size.height)
+          }
+        )
+
+      if shouldScroll {
+        ScrollView {
+          contentText
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+      } else {
+        contentText
+          .padding(.horizontal, 14)
+          .padding(.vertical, 12)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: containerHeight, alignment: .topLeading)
+    .background(Color(NSColor.textBackgroundColor))
+    .clipShape(RoundedRectangle(cornerRadius: 8))
+    .onPreferenceChange(CompactTextPreviewHeightPreferenceKey.self) { value in
+      if abs(contentHeight - value) > 0.5 {
+        contentHeight = value
+      }
+    }
+  }
+
+  private var contentText: some View {
+    Text(text.isEmpty ? " " : text)
+      .font(.system(size: 14))
+      .lineSpacing(4)
+      .textSelection(.enabled)
+  }
+
+  private var measurementText: String {
+    text.isEmpty ? " " : text
+  }
+
+  private var containerHeight: CGFloat {
+    min(max(contentHeight, minHeight), maxHeight)
+  }
+
+  private var shouldScroll: Bool {
+    contentHeight > maxHeight
+  }
+}
+
+private struct CompactTextPreviewHeightPreferenceKey: PreferenceKey {
+  static let defaultValue: CGFloat = 44
+
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = nextValue()
   }
 }
