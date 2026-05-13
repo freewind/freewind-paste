@@ -20,6 +20,7 @@ struct PreviewPaneView: View {
   @State private var multiSelectionMode: MultiSelectionPreviewMode = .split
   @State private var mergedDraftText: String = ""
   @State private var mergedSelectionSignature: String = ""
+  @FocusState private var isMergedEditorFocused: Bool
 
   var body: some View {
     @Bindable var appState = appState
@@ -120,11 +121,18 @@ struct PreviewPaneView: View {
       TextEditor(text: $mergedDraftText)
         .font(.system(size: 14))
         .scrollContentBackground(.hidden)
+        .focused($isMergedEditorFocused)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(NSColor.textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 10))
+        .onChange(of: isMergedEditorFocused) { _, isFocused in
+          appState.setPreviewTextInputActive(isFocused)
+        }
+    }
+    .onDisappear {
+      appState.setPreviewTextInputActive(false)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
   }

@@ -340,6 +340,10 @@ final class AppState {
       return event
     }
 
+    if isPreviewTextInputActive, popupShortcutAction(for: event) != .closePopup {
+      return event
+    }
+
     guard let action = popupShortcutAction(for: event) else {
       return event
     }
@@ -435,10 +439,6 @@ final class AppState {
   }
 
   private func shouldBypassPopupShortcut(_ action: PopupShortcutAction) -> Bool {
-    if isPreviewTextInputActive {
-      return action != .closePopup
-    }
-
     if action == .paste || action == .nativePaste {
       return isEditingTextInput()
     }
