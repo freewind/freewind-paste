@@ -35,6 +35,7 @@ struct HistoryRowView: View {
 
           Text(contentTitle)
             .font(.system(size: 12))
+            .foregroundStyle(ageTextColor)
             .lineLimit(1)
         }
       }
@@ -98,12 +99,8 @@ struct HistoryRowView: View {
 
   @ViewBuilder
   private var rowBackground: some View {
-    ZStack {
-      Rectangle()
-        .fill(toneColor)
-      Rectangle()
-        .fill(stateOverlayColor)
-    }
+    Rectangle()
+      .fill(stateOverlayColor)
   }
 
   @ViewBuilder
@@ -114,15 +111,14 @@ struct HistoryRowView: View {
       .padding(.horizontal, 2)
   }
 
-  private var toneColor: Color {
-    let base = Color(nsColor: .controlBackgroundColor)
+  private var ageTextColor: Color {
     switch DateGroup.title(for: item.groupingDate) {
     case "Today":
-      return base
+      return Color.primary
     case "Yesterday":
-      return base.opacity(0.72)
+      return Color.primary.opacity(0.72)
     default:
-      return base.opacity(0.48)
+      return Color.primary.opacity(0.48)
     }
   }
 
