@@ -144,14 +144,10 @@ struct HistoryListView: View {
     }
 
     let orderedIDs = uiState.visibleItems.map(\.id)
-    let reveal = uiState.consumePendingFocusedItemReveal()
-    let anchor = unitPoint(for: reveal.anchor) ?? scrollAnchor(for: focusedID)
     DispatchQueue.main.async {
-      rowRegistry.reveal(
+      rowRegistry.revealMinimally(
         itemID: focusedID,
-        orderedIDs: orderedIDs,
-        anchor: anchor,
-        force: reveal.force || anchor != nil
+        orderedIDs: orderedIDs
       )
     }
   }
@@ -177,26 +173,13 @@ struct HistoryListView: View {
           return
         }
 
-        uiState.prepareFocusedItemReveal(anchor: direction < 0 ? .top : .bottom, force: true)
         uiState.select([nextID])
       }
       return
     }
 
-    uiState.prepareFocusedItemReveal(anchor: direction < 0 ? .top : .bottom, force: true)
     if let nextID = fallbackPageTargetID(orderedIDs: orderedIDs, direction: direction) {
       uiState.select([nextID])
-    }
-  }
-
-  private func unitPoint(for anchor: ClipViewState.FocusScrollAnchor?) -> UnitPoint? {
-    switch anchor {
-    case .top:
-      return .top
-    case .bottom:
-      return .bottom
-    case nil:
-      return nil
     }
   }
 
@@ -206,27 +189,6 @@ struct HistoryListView: View {
     let pageStep = rowRegistry.pageStep(orderedIDs: orderedIDs)
     let nextIndex = min(max(currentIndex + (pageStep * direction), 0), orderedIDs.count - 1)
     return orderedIDs[nextIndex]
-  }
-
-  private func scrollAnchor(for itemID: String) -> UnitPoint? {
-    if let firstID = uiState.visibleItems.first?.id, itemID == firstID {
-      return .top
-    }
-
-    if let lastID = uiState.visibleItems.last?.id, itemID == lastID {
-      return .bottom
-    }
-
-    for group in uiState.groupedVisibleItems {
-      if let firstID = group.items.first?.id, itemID == firstID {
-        return .top
-      }
-      if let lastID = group.items.last?.id, itemID == lastID {
-        return .bottom
-      }
-    }
-
-    return nil
   }
 
   private func dropLine(for itemID: String) -> HistoryRowView.DropLine {
@@ -273,7 +235,7 @@ private final class HistoryRowRegistry {
     views[itemID] = nil
   }
 
-  func reveal(itemID: String, orderedIDs: [String], anchor: UnitPoint?, force: Bool, retryCount: Int = 0) {
+  func revealMinimally(itemID: String, orderedIDs: [String], retryCount: Int = 0) {
     cleanup()
 
     guard
@@ -287,8 +249,6 @@ private final class HistoryRowRegistry {
       revealMissingRow(
         itemID: itemID,
         orderedIDs: orderedIDs,
-        anchor: anchor,
-        force: force,
         retryCount: retryCount,
         scrollView: scrollView,
         documentView: documentView
@@ -299,20 +259,12 @@ private final class HistoryRowRegistry {
     let rowFrame = rowView.convert(rowView.bounds, to: documentView)
     let visibleRect = scrollView.contentView.documentVisibleRect
 
-    if
-      !force,
-      rowFrame.minY >= visibleRect.minY,
-      rowFrame.maxY <= visibleRect.maxY
-    {
+    if rowFrame.minY >= visibleRect.minY, rowFrame.maxY <= visibleRect.maxY {
       return
     }
 
     var nextOrigin = visibleRect.origin
-    if anchor == .top {
-      nextOrigin.y = rowFrame.minY
-    } else if anchor == .bottom {
-      nextOrigin.y = rowFrame.maxY - visibleRect.height
-    } else if rowFrame.minY < visibleRect.minY {
+    if rowFrame.minY < visibleRect.minY {
       nextOrigin.y = rowFrame.minY
     } else {
       nextOrigin.y = rowFrame.maxY - visibleRect.height
@@ -408,8 +360,6 @@ private final class HistoryRowRegistry {
   private func revealMissingRow(
     itemID: String,
     orderedIDs: [String],
-    anchor: UnitPoint?,
-    force: Bool,
     retryCount: Int,
     scrollView: NSScrollView,
     documentView: NSView
@@ -422,11 +372,7 @@ private final class HistoryRowRegistry {
     }
 
     let referenceIndex: Int
-    if anchor == .top {
-      referenceIndex = visibleRange.lowerBound
-    } else if anchor == .bottom {
-      referenceIndex = visibleRange.upperBound
-    } else if targetIndex < visibleRange.lowerBound {
+    if targetIndex < visibleRange.lowerBound {
       referenceIndex = visibleRange.lowerBound
     } else if targetIndex > visibleRange.upperBound {
       referenceIndex = visibleRange.upperBound
@@ -457,11 +403,9 @@ private final class HistoryRowRegistry {
     }
 
     DispatchQueue.main.async {
-      self.reveal(
+      self.revealMinimally(
         itemID: itemID,
         orderedIDs: orderedIDs,
-        anchor: anchor,
-        force: force,
         retryCount: retryCount + 1
       )
     }
