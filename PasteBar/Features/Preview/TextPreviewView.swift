@@ -114,7 +114,7 @@ struct TextPreviewView: View {
   }
 
   private var measurementText: String {
-    draftText.isEmpty ? " " : "\(draftText)\n "
+    draftText.isEmpty ? " " : draftText
   }
 
   private var lineCount: Int {

@@ -178,7 +178,7 @@ struct PreviewPaneView: View {
           item: item,
           showsHeader: false,
           showsMetrics: false,
-          minEditorHeight: 80,
+          minEditorHeight: 36,
           maxEditorHeight: 320,
           expandsToFill: false,
           allowsScrolling: false
