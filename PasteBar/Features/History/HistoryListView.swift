@@ -163,6 +163,9 @@ private extension HistoryTableRepresentable {
       tableView.dragItemProvider = { [weak self] row, event in
         self?.makeDragItem(for: row, event: event)
       }
+      tableView.onSpaceKey = { [weak self] in
+        self?.toggleFavoriteForFocusedItem()
+      }
 
       scrollView.documentView = tableView
       self.tableView = tableView
@@ -452,6 +455,18 @@ private extension HistoryTableRepresentable {
       }
 
       parent.appState.toggleFavorite(for: renderState.visibleItems[row].id)
+    }
+
+    private func toggleFavoriteForFocusedItem() {
+      guard
+        let parent,
+        renderState.currentTab != .trash,
+        let itemID = renderState.focusedID ?? renderState.visibleItems.first(where: { renderState.selectedIDs.contains($0.id) })?.id
+      else {
+        return
+      }
+
+      parent.appState.toggleFavorite(for: itemID)
     }
 
     private func prepareContextMenu(for row: Int) {

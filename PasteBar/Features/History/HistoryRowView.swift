@@ -13,6 +13,7 @@ final class HistoryTableView: NSTableView {
   var onRowDoubleClick: ((Int) -> Void)?
   var onContextMenu: ((Int) -> Void)?
   var dragItemProvider: ((Int, NSEvent) -> NSDraggingItem?)?
+  var onSpaceKey: (() -> Void)?
 
   private var mouseDownRow: Int?
   private var mouseDownPoint: NSPoint = .zero
@@ -78,6 +79,15 @@ final class HistoryTableView: NSTableView {
       return menu
     }
     return nil
+  }
+
+  override func keyDown(with event: NSEvent) {
+    switch event.keyCode {
+    case 49:
+      onSpaceKey?()
+    default:
+      super.keyDown(with: event)
+    }
   }
 
   override func draggingSession(_ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
