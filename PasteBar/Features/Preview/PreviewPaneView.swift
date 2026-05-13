@@ -37,6 +37,11 @@ struct PreviewPaneView: View {
 
           Spacer()
 
+          Button("Paste") {
+            appState.pasteSelection(mode: .nativeShiftEnter)
+          }
+          .disabled(uiState.selectedItems.isEmpty)
+
           if hasImageSelection {
             Picker("Image Output", selection: $appState.imageOutputMode) {
               ForEach(ImageOutputMode.allCases, id: \.self) { mode in
@@ -197,7 +202,7 @@ struct PreviewPaneView: View {
   }
 
   private var showsToolbar: Bool {
-    uiState.selectedItems.count > 1 || hasImageSelection
+    uiState.focusedItem != nil || uiState.selectedItems.count > 1 || hasImageSelection
   }
 
   private var currentSelectionSignature: String {
@@ -208,6 +213,7 @@ struct PreviewPaneView: View {
       }
       .joined(separator: "\u{1F}")
   }
+
   private func metaHeader(item: ClipItem) -> some View {
     HStack {
       if !item.label.isEmpty {

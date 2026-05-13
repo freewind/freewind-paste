@@ -1,152 +1,164 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private let historyListScrollSpaceName = "HistoryListScrollSpace"
+
 struct HistoryListView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
   @EnvironmentObject private var store: ClipStore
   @State private var draggedItemID: String?
   @State private var dropTarget: HistoryDropTarget?
+  @State private var rowFrames: [String: CGRect] = [:]
 
   var body: some View {
-    ScrollViewReader { proxy in
-      ScrollView {
-        LazyVStack(alignment: .leading, spacing: 0) {
-          ForEach(uiState.groupedVisibleItems) { group in
-            VStack(alignment: .leading, spacing: 0) {
-              Text(group.title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+    GeometryReader { viewport in
+      ScrollViewReader { proxy in
+        ScrollView {
+          LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(uiState.groupedVisibleItems) { group in
+              VStack(alignment: .leading, spacing: 0) {
+                Text(group.title)
+                  .font(.caption.weight(.semibold))
+                  .foregroundStyle(.secondary)
+                  .padding(.horizontal, 12)
+                  .padding(.top, 8)
+                  .padding(.bottom, 4)
 
-              ForEach(group.items) { item in
-                NativeClickableRow(
-                  content: AnyView(
-                    HistoryRowView(
-                      item: item,
-                      isDragActive: draggedItemID != nil,
-                      isDragged: draggedItemID == item.id,
-                      dropLine: dropLine(for: item.id)
-                    )
-                  ),
-                  onClick: { event in
-                    uiState.handleClick(
-                      on: item.id,
-                      orderedIDs: uiState.visibleItems.map(\.id),
-                      modifiers: event.modifierFlags
-                    )
-                  },
-                  onDoubleClick: {
-                    if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+                ForEach(group.items) { item in
+                  NativeClickableRow(
+                    content: AnyView(
+                      HistoryRowView(
+                        item: item,
+                        isDragActive: draggedItemID != nil,
+                        isDragged: draggedItemID == item.id,
+                        dropLine: dropLine(for: item.id)
+                      )
+                    ),
+                    onClick: { event in
                       uiState.handleClick(
                         on: item.id,
                         orderedIDs: uiState.visibleItems.map(\.id),
-                        modifiers: []
+                        modifiers: event.modifierFlags
                       )
+                    },
+                    onDoubleClick: {
+                      if uiState.selectedIDs.count <= 1 || !uiState.selectedIDs.contains(item.id) {
+                        uiState.handleClick(
+                          on: item.id,
+                          orderedIDs: uiState.visibleItems.map(\.id),
+                          modifiers: []
+                        )
+                      }
+                      appState.pasteSelection(mode: .normalEnter)
                     }
-                    appState.pasteSelection(mode: .normalEnter)
-                  }
-                )
-                  .id(item.id)
-                  .frame(maxWidth: .infinity)
-                  .contentShape(Rectangle())
-                  .contextMenu {
-                    let targetIDs = contextTargetIDs(for: item)
-                    let isMultiTarget = targetIDs.count > 1
-
-                    if uiState.currentTab != .trash {
-                      Button("Paste") {
-                        appState.paste(targetIDs, mode: .normalEnter)
-                      }
-
-                      Divider()
-
-                      Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
-                        appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
-                      }
-                      Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
-                        appState.promptForLabel(for: item.id)
-                      }
-                      .disabled(isMultiTarget)
-
-                      Button("Move to Trash") {
-                        appState.workflowService.delete(targetIDs, permanently: false)
-                      }
-                    } else {
-                      Button("Restore") {
-                        appState.workflowService.restore(targetIDs)
-                      }
-                      Button("Delete Permanently") {
-                        appState.workflowService.delete(targetIDs, permanently: true)
-                      }
-                    }
-                  }
-                  .onDrag {
-                    if !uiState.selectedIDs.contains(item.id) {
-                      uiState.select([item.id])
-                    }
-                    draggedItemID = item.id
-                    dropTarget = nil
-                    return NSItemProvider(object: item.id as NSString)
-                  }
-                  .onDrop(
-                    of: [UTType.text],
-                    delegate: HistoryRowDropDelegate(
-                      targetItemID: item.id,
-                      groupItemIDs: group.items.map(\.id),
-                      draggedItemID: $draggedItemID,
-                      dropTarget: $dropTarget,
-                      onMove: { offsets, destination in
-                        appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
-                      }
-                    )
                   )
+                    .id(item.id)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                    .background(RowFrameReader(itemID: item.id, frames: $rowFrames))
+                    .contextMenu {
+                      let targetIDs = contextTargetIDs(for: item)
+                      let isMultiTarget = targetIDs.count > 1
+
+                      if uiState.currentTab != .trash {
+                        Button("Paste") {
+                          appState.paste(targetIDs, mode: .normalEnter)
+                        }
+
+                        Divider()
+
+                        Button(allFavorites(in: targetIDs) ? "Unfavorite" : "Favorite") {
+                          appState.setFavorite(targetIDs, favorite: !allFavorites(in: targetIDs))
+                        }
+                        Button(item.label.isEmpty ? "Add Label" : "Edit Label") {
+                          appState.promptForLabel(for: item.id)
+                        }
+                        .disabled(isMultiTarget)
+
+                        Button("Move to Trash") {
+                          appState.workflowService.delete(targetIDs, permanently: false)
+                        }
+                      } else {
+                        Button("Restore") {
+                          appState.workflowService.restore(targetIDs)
+                        }
+                        Button("Delete Permanently") {
+                          appState.workflowService.delete(targetIDs, permanently: true)
+                        }
+                      }
+                    }
+                    .onDrag {
+                      if !uiState.selectedIDs.contains(item.id) {
+                        uiState.select([item.id])
+                      }
+                      draggedItemID = item.id
+                      dropTarget = nil
+                      return NSItemProvider(object: item.id as NSString)
+                    }
+                    .onDrop(
+                      of: [UTType.text],
+                      delegate: HistoryRowDropDelegate(
+                        targetItemID: item.id,
+                        groupItemIDs: group.items.map(\.id),
+                        draggedItemID: $draggedItemID,
+                        dropTarget: $dropTarget,
+                        onMove: { offsets, destination in
+                          appState.moveItems(within: group.items.map(\.id), from: offsets, to: destination)
+                        }
+                      )
+                    )
+                }
               }
             }
           }
         }
-      }
-      .background(
-        DragEndMonitorView {
-          guard draggedItemID != nil || dropTarget != nil else {
+        .coordinateSpace(name: historyListScrollSpaceName)
+        .background(
+          DragEndMonitorView {
+            guard draggedItemID != nil || dropTarget != nil else {
+              return
+            }
+            draggedItemID = nil
+            dropTarget = nil
+          }
+        )
+        .onAppear {
+          scrollToFocusedItem(with: proxy, viewportHeight: viewport.size.height, animated: false)
+        }
+        .onChange(of: uiState.selectedIDs) { _, newValue in
+          guard draggedItemID == nil else {
             return
           }
-          draggedItemID = nil
-          dropTarget = nil
-        }
-      )
-      .onAppear {
-        scrollToFocusedItem(with: proxy, animated: false)
-      }
-      .onChange(of: uiState.selectedIDs) { _, newValue in
-        guard draggedItemID == nil else {
-          return
-        }
 
-        if let focusedID = uiState.focusedID, newValue.contains(focusedID) {
-          return
-        }
+          if let focusedID = uiState.focusedID, newValue.contains(focusedID) {
+            return
+          }
 
-        if let id = uiState.visibleItems.first(where: { newValue.contains($0.id) })?.id {
-          uiState.focus(id)
+          if let id = uiState.visibleItems.first(where: { newValue.contains($0.id) })?.id {
+            uiState.focus(id)
+          }
         }
-      }
-      .onChange(of: uiState.focusedID) { _, _ in
-        guard draggedItemID == nil else {
-          return
+        .onChange(of: uiState.focusedID) { _, _ in
+          guard draggedItemID == nil else {
+            return
+          }
+          scrollToFocusedItem(with: proxy, viewportHeight: viewport.size.height, animated: false)
         }
-        scrollToFocusedItem(with: proxy, animated: false)
       }
     }
   }
 
   private func scrollToFocusedItem(
     with proxy: ScrollViewProxy,
+    viewportHeight: CGFloat,
     animated: Bool = true
   ) {
     guard let focusedID = uiState.focusedID else {
+      return
+    }
+
+    if isItemVisible(focusedID, viewportHeight: viewportHeight) {
       return
     }
 
@@ -160,6 +172,14 @@ struct HistoryListView: View {
         proxy.scrollTo(focusedID, anchor: anchor)
       }
     }
+  }
+
+  private func isItemVisible(_ itemID: String, viewportHeight: CGFloat) -> Bool {
+    guard let frame = rowFrames[itemID], viewportHeight > 0 else {
+      return false
+    }
+
+    return frame.maxY > 0 && frame.minY < viewportHeight
   }
 
   private func scrollAnchor(for itemID: String) -> UnitPoint? {
@@ -262,6 +282,23 @@ private extension NSView {
       current = view.superview
     }
     return false
+  }
+}
+
+private struct RowFrameReader: View {
+  let itemID: String
+  @Binding var frames: [String: CGRect]
+
+  var body: some View {
+    GeometryReader { proxy in
+      Color.clear
+        .onAppear {
+          frames[itemID] = proxy.frame(in: .named(historyListScrollSpaceName))
+        }
+        .onChange(of: proxy.frame(in: .named(historyListScrollSpaceName))) { _, frame in
+          frames[itemID] = frame
+        }
+    }
   }
 }
 
