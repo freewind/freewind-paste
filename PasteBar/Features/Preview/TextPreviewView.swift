@@ -8,6 +8,7 @@ struct TextPreviewView: View {
   @State private var draftText: String = ""
   @State private var isSyncingFromItem = false
   @State private var saveTask: Task<Void, Never>?
+  @FocusState private var isEditorFocused: Bool
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -22,6 +23,7 @@ struct TextPreviewView: View {
       TextEditor(text: $draftText)
         .font(.system(size: 14))
         .scrollContentBackground(.hidden)
+        .focused($isEditorFocused)
         .frame(maxWidth: .infinity)
         .frame(minHeight: 180, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(NSColor.textBackgroundColor))
@@ -29,6 +31,9 @@ struct TextPreviewView: View {
         .onAppear { syncFromItem() }
         .onChange(of: item.id) { _, _ in syncFromItem() }
         .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
+        .onChange(of: isEditorFocused) { _, isFocused in
+          appState.setPreviewTextInputActive(isFocused)
+        }
         .onDisappear { handleDisappear() }
 
       HStack(spacing: 6) {
@@ -66,6 +71,7 @@ struct TextPreviewView: View {
   }
 
   private func handleDisappear() {
+    appState.setPreviewTextInputActive(false)
     saveTask?.cancel()
     let current = item.content.text ?? ""
     guard draftText != current else {
@@ -88,11 +94,13 @@ struct AutoGrowingTextPreviewView: View {
   @State private var draftText: String = ""
   @State private var isSyncingFromItem = false
   @State private var saveTask: Task<Void, Never>?
+  @FocusState private var isEditorFocused: Bool
 
   var body: some View {
     TextField("", text: $draftText, axis: .vertical)
       .textFieldStyle(.plain)
       .font(.system(size: 14))
+      .focused($isEditorFocused)
       .lineLimit(1...)
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(12)
@@ -101,6 +109,9 @@ struct AutoGrowingTextPreviewView: View {
       .onAppear { syncFromItem() }
       .onChange(of: item.id) { _, _ in syncFromItem() }
       .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
+      .onChange(of: isEditorFocused) { _, isFocused in
+        appState.setPreviewTextInputActive(isFocused)
+      }
       .onDisappear { handleDisappear() }
       .onKeyPress(.return, phases: .down, action: handleReturn)
   }
@@ -129,6 +140,7 @@ struct AutoGrowingTextPreviewView: View {
   }
 
   private func handleDisappear() {
+    appState.setPreviewTextInputActive(false)
     saveTask?.cancel()
     let current = item.content.text ?? ""
     guard draftText != current else {

@@ -22,6 +22,7 @@ final class AppState {
   var imageOutputMode: ImageOutputMode
   var imageLowResMaxDimension: Double
   var accessibilityGranted: Bool
+  var isPreviewTextInputActive: Bool
 
   @ObservationIgnored let repository: ClipRepository
   @ObservationIgnored let imageAssetStore: ImageAssetStore
@@ -90,6 +91,7 @@ final class AppState {
     imageOutputMode = .original
     imageLowResMaxDimension = 512
     accessibilityGranted = accessibilityAccess.isPermissionGranted()
+    isPreviewTextInputActive = false
     workflow.pruneStaleItems()
     workflow.bootstrap()
   }
@@ -325,6 +327,10 @@ final class AppState {
     accessibilityGranted = accessibilityAccess.isPermissionGranted()
   }
 
+  func setPreviewTextInputActive(_ active: Bool) {
+    isPreviewTextInputActive = active
+  }
+
   func handlePopupKeyDown(_ event: NSEvent) -> NSEvent? {
     guard
       isPopupVisible,
@@ -413,6 +419,10 @@ final class AppState {
   }
 
   private func shouldBypassDeleteShortcut() -> Bool {
+    if isPreviewTextInputActive {
+      return true
+    }
+
     guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
       return false
     }
@@ -425,6 +435,10 @@ final class AppState {
   }
 
   private func shouldBypassPopupShortcut(_ action: PopupShortcutAction) -> Bool {
+    if isPreviewTextInputActive {
+      return action != .closePopup
+    }
+
     if action == .paste || action == .nativePaste {
       return isEditingTextInput()
     }
