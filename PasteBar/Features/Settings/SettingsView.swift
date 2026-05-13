@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
   @EnvironmentObject private var appState: AppState
+  @ObserveInjection private var inject
 
   var body: some View {
     ScrollView {
@@ -105,6 +106,7 @@ struct SettingsView: View {
     .onReceive(Timer.publish(every: 0.8, on: .main, in: .common).autoconnect()) { _ in
       appState.refreshAccessibilityStatus()
     }
+    .enableInjection()
   }
 
   @ViewBuilder

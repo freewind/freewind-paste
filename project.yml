@@ -1,11 +1,17 @@
 name: PasteBar
 options:
   minimumXcodeGenVersion: 2.38.0
+packages:
+  Inject:
+    url: https://github.com/krzysztofzablocki/Inject.git
+    from: 1.2.4
 targets:
   PasteBar:
     type: application
     platform: macOS
     deploymentTarget: "14.0"
+    dependencies:
+      - package: Inject
     sources:
       - path: PasteBar
     resources:
@@ -20,3 +26,7 @@ targets:
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_NSAppleEventsUsageDescription: PasteBar 需要模拟粘贴到前台应用。
         INFOPLIST_KEY_NSHumanReadableCopyright: Freewind
+      configs:
+        Debug:
+          EMIT_FRONTEND_COMMAND_LINES: YES
+          OTHER_LDFLAGS: "$(inherited) -Xlinker -interposable"

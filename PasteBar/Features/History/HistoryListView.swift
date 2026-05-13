@@ -5,6 +5,7 @@ struct HistoryListView: View {
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
   @EnvironmentObject private var store: ClipStore
+  @ObserveInjection private var inject
   @State private var draggedItemID: String?
   @State private var dropTarget: HistoryDropTarget?
 
@@ -134,6 +135,7 @@ struct HistoryListView: View {
         }
         scrollToFocusedItem(with: proxy)
       }
+      .enableInjection()
     }
   }
 

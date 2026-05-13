@@ -9,6 +9,7 @@ struct HistoryRowView: View {
 
   @EnvironmentObject private var appState: AppState
   @EnvironmentObject private var uiState: ClipViewState
+  @ObserveInjection private var inject
   let item: ClipItem
   var isDragActive: Bool = false
   var isDragged: Bool = false
@@ -64,6 +65,7 @@ struct HistoryRowView: View {
     }
     .opacity(isDragged ? 0.55 : 1)
     .onHover { isHovering = $0 }
+    .enableInjection()
   }
 
   @ViewBuilder

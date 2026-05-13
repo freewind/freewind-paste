@@ -5,6 +5,10 @@ struct PasteBarApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
   @StateObject private var appState = AppState()
 
+  init() {
+    InjectionSupport.load()
+  }
+
   var body: some Scene {
     WindowGroup(id: "bootstrap") {
       BootstrapLauncherView(appState: appState) {

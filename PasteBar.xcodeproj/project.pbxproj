@@ -13,6 +13,7 @@
 		11F46876E4180F2B304290CE /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235F9F62ADEA161D6670617E /* SettingsView.swift */; };
 		267EF38A8B5C9E83E687356D /* ImageAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1474E45CCCCBD5EE3056B0BB /* ImageAssetStore.swift */; };
 		2C16EF2DFE774836B7D6B1F2 /* TextPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D09923A23E6E54EA9B431EE /* TextPreviewView.swift */; };
+		2CC96CFE4C7DBD9A026754A9 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = 10B001333AD69BAA44D3B617 /* Inject */; };
 		394BEA790CF05E81C7F16C9D /* HistoryRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C438C0859D14B6F1282D9F69 /* HistoryRowView.swift */; };
 		3E48A5ED03FACBD1B756371C /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A9F0C82159408137F69713 /* HotkeyService.swift */; };
 		40AC9D29F959B90BE5DB3350 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30B455374F60AF5DBAFA6E6 /* HotkeyRecorderView.swift */; };
@@ -29,6 +30,7 @@
 		8736C8C508C9DEDB46A23AC4 /* AccessibilityPasteTrigger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1AE9EB254AA0DE72CC7ABE8 /* AccessibilityPasteTrigger.swift */; };
 		8E83AFAC4F14C9B4522E4726 /* HistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B060CE406ADE332FC2DF2F1 /* HistoryListView.swift */; };
 		92B3B0994B77A16CA3CAE23D /* ClipContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B52B7B2CB485B9469239BBF6 /* ClipContent.swift */; };
+		96391830522586BCAA1DB92C /* InjectionSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599169A2E4BB51507D340B07 /* InjectionSupport.swift */; };
 		9A119E73BDC0E1E9B157DEE9 /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4409185A59B375B0C4057EB0 /* SearchService.swift */; };
 		9EF3DF662BDB99CEC05F3223 /* GroupedItems.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA02DA55EF0B0DDDF4305CA7 /* GroupedItems.swift */; };
 		A8C4005208137DC1495C64A1 /* ClipboardPasteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E024217AFB0D12AD817C94EB /* ClipboardPasteService.swift */; };
@@ -68,6 +70,7 @@
 		536A368E659B0219FD6C930A /* LaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginService.swift; sourceTree = "<group>"; };
 		537903BF9F6F8F2A12FCB416 /* SyntaxHighlightingTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntaxHighlightingTextView.swift; sourceTree = "<group>"; };
 		583DCDBCEE664A0F2962BC4B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		599169A2E4BB51507D340B07 /* InjectionSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionSupport.swift; sourceTree = "<group>"; };
 		5AD522604A865762E8595ECC /* ClipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipStore.swift; sourceTree = "<group>"; };
 		5B060CE406ADE332FC2DF2F1 /* HistoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryListView.swift; sourceTree = "<group>"; };
 		5ECC9C098A968DCA77079DB8 /* ClipboardParseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardParseService.swift; sourceTree = "<group>"; };
@@ -95,12 +98,24 @@
 		F51734667C560D2DA4C2D587 /* PathNormalize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathNormalize.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		5B8A4425D9E121B6E3C92E12 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2CC96CFE4C7DBD9A026754A9 /* Inject in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		0BC36AA2048FA2A5D2A383E3 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				EEDC404DFD97F507F2CEF3A3 /* AppDelegate.swift */,
 				789C0BC4D2E540756D6885BA /* AppState.swift */,
+				599169A2E4BB51507D340B07 /* InjectionSupport.swift */,
 				E18C376D453F39723AC47FBA /* PasteBarApp.swift */,
 			);
 			path = App;
@@ -296,7 +311,7 @@
 			path = Preview;
 			sourceTree = "<group>";
 		};
-		"TEMP_4BA16AA4-8A6B-4671-8574-62A559A8C7A4" /* PreviewAssets */ = {
+		"TEMP_D076C99C-FA52-4F27-813A-4175BB7FDBBA" /* PreviewAssets */ = {
 			isa = PBXGroup;
 			children = (
 			);
@@ -312,6 +327,7 @@
 			buildPhases = (
 				829EF5CDBD15554C06AB0B79 /* Sources */,
 				E5E123B58F6D73A20DEF8226 /* Resources */,
+				5B8A4425D9E121B6E3C92E12 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -319,6 +335,7 @@
 			);
 			name = PasteBar;
 			packageProductDependencies = (
+				10B001333AD69BAA44D3B617 /* Inject */,
 			);
 			productName = PasteBar;
 			productReference = D554605F1FA5C58B7909277A /* PasteBar.app */;
@@ -344,6 +361,9 @@
 			);
 			mainGroup = D955BB7AFA79BDB82D789A42;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4F8CB89D3B6DA2C4BE388B1A /* XCRemoteSwiftPackageReference "Inject" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 193814C6E3153A872F3456C3 /* Products */;
 			projectDirPath = "";
@@ -395,6 +415,7 @@
 				3E48A5ED03FACBD1B756371C /* HotkeyService.swift in Sources */,
 				267EF38A8B5C9E83E687356D /* ImageAssetStore.swift in Sources */,
 				DA0AA7FCA80AF764DA687EA0 /* ImagePreviewView.swift in Sources */,
+				96391830522586BCAA1DB92C /* InjectionSupport.swift in Sources */,
 				F6D24269D27C1CB687F2FC5F /* LanguageGuessService.swift in Sources */,
 				4195F9D81EFD20BBFB669DCB /* LaunchAtLoginService.swift in Sources */,
 				650B0D96F9299C949FE9EB2E /* MenuBarController.swift in Sources */,
@@ -483,6 +504,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
+				EMIT_FRONTEND_COMMAND_LINES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "PasteBar 需要模拟粘贴到前台应用。";
@@ -492,6 +514,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				OTHER_LDFLAGS = "$(inherited) -Xlinker -interposable";
 				PRODUCT_BUNDLE_IDENTIFIER = com.freewind.PasteBar;
 				PRODUCT_NAME = PasteBar;
 				SDKROOT = macosx;
@@ -597,6 +620,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4F8CB89D3B6DA2C4BE388B1A /* XCRemoteSwiftPackageReference "Inject" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzysztofzablocki/Inject.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		10B001333AD69BAA44D3B617 /* Inject */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F8CB89D3B6DA2C4BE388B1A /* XCRemoteSwiftPackageReference "Inject" */;
+			productName = Inject;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9427A9A38E6E83BEE674C3B7 /* Project object */;
 }

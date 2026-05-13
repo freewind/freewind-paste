@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ImagePreviewView: View {
   @EnvironmentObject private var appState: AppState
+  @ObserveInjection private var inject
   let item: ClipItem
   let imageAssetStore: ImageAssetStore
   let outputMode: ImageOutputMode
@@ -113,6 +114,7 @@ struct ImagePreviewView: View {
       .foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, maxHeight: compact ? nil : .infinity, alignment: .topLeading)
+    .enableInjection()
   }
 
   private var originalSize: (width: Int, height: Int) {
