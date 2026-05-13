@@ -154,9 +154,10 @@ struct HistoryListView: View {
       return
     }
 
-    let anchor = scrollAnchor(for: focusedID)
+    let reveal = uiState.consumePendingFocusedItemReveal()
+    let anchor = unitPoint(for: reveal.anchor) ?? scrollAnchor(for: focusedID)
     DispatchQueue.main.async {
-      rowRegistry.revealIfNeeded(itemID: focusedID, anchor: anchor)
+      rowRegistry.reveal(itemID: focusedID, anchor: anchor, force: reveal.force || anchor != nil)
     }
   }
 
@@ -177,7 +178,19 @@ struct HistoryListView: View {
     let nextIndex = min(max(currentIndex + (pageStep * direction), 0), orderedIDs.count - 1)
     let nextID = orderedIDs[nextIndex]
 
+    uiState.prepareFocusedItemReveal(anchor: direction < 0 ? .top : .bottom, force: true)
     uiState.select([nextID])
+  }
+
+  private func unitPoint(for anchor: ClipViewState.FocusScrollAnchor?) -> UnitPoint? {
+    switch anchor {
+    case .top:
+      return .top
+    case .bottom:
+      return .bottom
+    case nil:
+      return nil
+    }
   }
 
   private func scrollAnchor(for itemID: String) -> UnitPoint? {
@@ -245,7 +258,7 @@ private final class HistoryRowRegistry {
     views[itemID] = nil
   }
 
-  func revealIfNeeded(itemID: String, anchor: UnitPoint?) {
+  func reveal(itemID: String, anchor: UnitPoint?, force: Bool) {
     cleanup()
 
     guard
@@ -259,7 +272,7 @@ private final class HistoryRowRegistry {
     let rowFrame = rowView.convert(rowView.bounds, to: documentView)
     let visibleRect = scrollView.contentView.documentVisibleRect
 
-    if anchor == nil, rowFrame.intersects(visibleRect) {
+    if !force, rowFrame.intersects(visibleRect) {
       return
     }
 

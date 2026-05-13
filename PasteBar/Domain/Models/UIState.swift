@@ -48,6 +48,11 @@ enum ImageOutputMode: String, CaseIterable {
 
 @MainActor
 final class ClipViewState: ObservableObject {
+  enum FocusScrollAnchor {
+    case top
+    case bottom
+  }
+
   enum VisibleCheckedState {
     case none
     case partial
@@ -76,6 +81,8 @@ final class ClipViewState: ObservableObject {
   @Published private(set) var pageMoveRequestID: Int
   var selectionAnchorID: String?
   private var pendingPageMoveDirection: Int
+  private var pendingFocusScrollAnchor: FocusScrollAnchor?
+  private var pendingFocusScrollForced: Bool
 
   init(
     store: ClipStore,
@@ -96,6 +103,8 @@ final class ClipViewState: ObservableObject {
     self.kindFilter = kindFilter
     self.pageMoveRequestID = pageMoveRequestID
     pendingPageMoveDirection = 0
+    pendingFocusScrollAnchor = nil
+    pendingFocusScrollForced = false
     selectionAnchorID = focusedID ?? selectedIDs.first
   }
 
@@ -291,6 +300,7 @@ final class ClipViewState: ObservableObject {
       return
     }
 
+    prepareFocusedItemReveal(anchor: isStart ? .top : .bottom, force: true)
     selectedIDs = [targetID]
     focusedID = targetID
     selectionAnchorID = targetID
@@ -308,6 +318,18 @@ final class ClipViewState: ObservableObject {
     let direction = pendingPageMoveDirection
     pendingPageMoveDirection = 0
     return direction
+  }
+
+  func prepareFocusedItemReveal(anchor: FocusScrollAnchor?, force: Bool) {
+    pendingFocusScrollAnchor = anchor
+    pendingFocusScrollForced = force
+  }
+
+  func consumePendingFocusedItemReveal() -> (anchor: FocusScrollAnchor?, force: Bool) {
+    let result = (anchor: pendingFocusScrollAnchor, force: pendingFocusScrollForced)
+    pendingFocusScrollAnchor = nil
+    pendingFocusScrollForced = false
+    return result
   }
 
   private func boundaryID(in group: GroupedItems, isStart: Bool) -> String? {
