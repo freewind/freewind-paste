@@ -1,21 +1,27 @@
 import AppKit
 import Foundation
 
+/// 持久化到 settings.json 的快捷键结构。
+/// `keyCode` 用 macOS 虚拟键码，`modifiers` 用 Carbon modifier bitmask。
 struct AppHotkey: Codable, Equatable {
+  /// macOS 虚拟键码。
+  /// 例：`9 = V`、`36 = Return`、`48 = Tab`、`51 = Delete`、`53 = Escape`、`125/126 = Down/Up`
   var keyCode: UInt32
+  /// Carbon modifier bitmask。
+  /// 当前只用这 4 个值：`256 = Command`、`512 = Shift`、`2048 = Option`、`4096 = Control`
   var modifiers: UInt32
 
   static let `default` = Self(
-    keyCode: 9,
-    modifiers: 256 | 512
+    keyCode: 9, // `V`
+    modifiers: 256 | 512 // `Command + Shift`
   )
 
   var displayName: String {
     var parts: [String] = []
-    if modifiers & 256 != 0 { parts.append("⌘") }
-    if modifiers & 512 != 0 { parts.append("⇧") }
-    if modifiers & 2048 != 0 { parts.append("⌥") }
-    if modifiers & 4096 != 0 { parts.append("⌃") }
+    if modifiers & 256 != 0 { parts.append("⌘") } // Command
+    if modifiers & 512 != 0 { parts.append("⇧") } // Shift
+    if modifiers & 2048 != 0 { parts.append("⌥") } // Option
+    if modifiers & 4096 != 0 { parts.append("⌃") } // Control
     return parts.joined() + Self.keyName(for: keyCode)
   }
 
@@ -25,14 +31,15 @@ struct AppHotkey: Codable, Equatable {
 
   static func carbonFlags(for modifiers: NSEvent.ModifierFlags) -> UInt32 {
     var flags: UInt32 = 0
-    if modifiers.contains(.command) { flags |= 256 }
-    if modifiers.contains(.shift) { flags |= 512 }
-    if modifiers.contains(.option) { flags |= 2048 }
-    if modifiers.contains(.control) { flags |= 4096 }
+    if modifiers.contains(.command) { flags |= 256 } // Carbon commandKey
+    if modifiers.contains(.shift) { flags |= 512 } // Carbon shiftKey
+    if modifiers.contains(.option) { flags |= 2048 } // Carbon optionKey
+    if modifiers.contains(.control) { flags |= 4096 } // Carbon controlKey
     return flags
   }
 
   private static func keyName(for keyCode: UInt32) -> String {
+    // 常见虚拟键码到展示名的最小映射；未覆盖时回退成 `#keyCode`
     let mapping: [UInt32: String] = [
       0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X",
       8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R",
@@ -96,6 +103,8 @@ enum PopupShortcutAction: String, CaseIterable, Codable, Identifiable {
   }
 }
 
+/// popup 内部动作的快捷键表。
+/// 每个字段对应一个动作，值为该动作当前绑定的 `AppHotkey`。
 struct PopupHotkeys: Codable, Equatable {
   var closePopup: AppHotkey
   var focusList: AppHotkey
@@ -130,20 +139,20 @@ struct PopupHotkeys: Codable, Equatable {
   }
 
   static let `default` = Self(
-    closePopup: .init(keyCode: 53, modifiers: 0),
-    focusList: .init(keyCode: 48, modifiers: 0),
-    paste: .init(keyCode: 36, modifiers: 0),
-    nativePaste: .init(keyCode: 36, modifiers: 512),
-    focusPrevious: .init(keyCode: 126, modifiers: 0),
-    focusNext: .init(keyCode: 125, modifiers: 0),
-    expandPrevious: .init(keyCode: 126, modifiers: 512),
-    expandNext: .init(keyCode: 125, modifiers: 512),
-    jumpToTop: .init(keyCode: 126, modifiers: 256),
-    jumpToBottom: .init(keyCode: 125, modifiers: 256),
-    moveSelectionUp: .init(keyCode: 126, modifiers: 512 | 2048),
-    moveSelectionDown: .init(keyCode: 125, modifiers: 512 | 2048),
-    deleteSelection: .init(keyCode: 51, modifiers: 0),
-    deleteSelectionPermanently: .init(keyCode: 51, modifiers: 256)
+    closePopup: .init(keyCode: 53, modifiers: 0), // Escape
+    focusList: .init(keyCode: 48, modifiers: 0), // Tab
+    paste: .init(keyCode: 36, modifiers: 0), // Return
+    nativePaste: .init(keyCode: 36, modifiers: 512), // Shift + Return
+    focusPrevious: .init(keyCode: 126, modifiers: 0), // Up
+    focusNext: .init(keyCode: 125, modifiers: 0), // Down
+    expandPrevious: .init(keyCode: 126, modifiers: 512), // Shift + Up
+    expandNext: .init(keyCode: 125, modifiers: 512), // Shift + Down
+    jumpToTop: .init(keyCode: 126, modifiers: 256), // Command + Up
+    jumpToBottom: .init(keyCode: 125, modifiers: 256), // Command + Down
+    moveSelectionUp: .init(keyCode: 126, modifiers: 512 | 2048), // Shift + Option + Up
+    moveSelectionDown: .init(keyCode: 125, modifiers: 512 | 2048), // Shift + Option + Down
+    deleteSelection: .init(keyCode: 51, modifiers: 0), // Delete
+    deleteSelectionPermanently: .init(keyCode: 51, modifiers: 256) // Command + Delete
   )
 
   init(
