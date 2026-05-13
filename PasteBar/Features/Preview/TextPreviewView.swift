@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct TextPreviewView: View {
@@ -27,30 +28,14 @@ struct TextPreviewView: View {
         }
       }
 
-      ZStack(alignment: .topLeading) {
-        Text(measurementText)
-          .font(.system(size: 14))
-          .lineSpacing(4)
-          .multilineTextAlignment(.leading)
-          .fixedSize(horizontal: false, vertical: true)
-          .foregroundStyle(.clear)
-          .padding(.horizontal, 14)
-          .padding(.vertical, 12)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .background(
-            GeometryReader { proxy in
-              Color.clear
-                .preference(key: TextHeightPreferenceKey.self, value: proxy.size.height)
-            }
-          )
-
-        TextEditor(text: $draftText)
-          .font(.system(size: 14))
-          .scrollContentBackground(.hidden)
-          .scrollDisabled(!allowsScrolling)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 6)
-      }
+      AutoSizingEditableTextView(
+        text: $draftText,
+        identity: item.id,
+        measuredHeight: $editorHeight,
+        minHeight: minEditorHeight,
+        maxHeight: maxEditorHeight,
+        allowsScrolling: allowsScrolling
+      )
       .frame(maxWidth: .infinity)
       .frame(
         minHeight: expandsToFill ? max(editorHeight, minEditorHeight) : editorHeight,
@@ -62,12 +47,6 @@ struct TextPreviewView: View {
       .onAppear { syncFromItem() }
       .onChange(of: item.id) { _, _ in syncFromItem() }
       .onChange(of: draftText) { _, newValue in handleDraftChange(newValue) }
-      .onPreferenceChange(TextHeightPreferenceKey.self) { value in
-        let nextHeight = min(max(value, minEditorHeight), maxEditorHeight)
-        if abs(editorHeight - nextHeight) > 0.5 {
-          editorHeight = nextHeight
-        }
-      }
       .onDisappear { handleDisappear() }
 
       if showsMetrics {
@@ -115,19 +94,142 @@ struct TextPreviewView: View {
     appState.updateText(for: item.id, text: draftText)
   }
 
-  private var measurementText: String {
-    draftText.isEmpty ? " " : draftText
-  }
-
   private var lineCount: Int {
     max(draftText.split(separator: "\n", omittingEmptySubsequences: false).count, 1)
   }
 }
 
-private struct TextHeightPreferenceKey: PreferenceKey {
-  static let defaultValue: CGFloat = 44
+private struct AutoSizingEditableTextView: NSViewRepresentable {
+  @Binding var text: String
+  let identity: String
+  @Binding var measuredHeight: CGFloat
+  let minHeight: CGFloat
+  let maxHeight: CGFloat
+  let allowsScrolling: Bool
 
-  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-    value = nextValue()
+  func makeCoordinator() -> Coordinator {
+    Coordinator(self)
+  }
+
+  func makeNSView(context: Context) -> NSScrollView {
+    let scrollView = NSScrollView()
+    scrollView.drawsBackground = false
+    scrollView.borderType = .noBorder
+    scrollView.hasVerticalScroller = false
+    scrollView.hasHorizontalScroller = false
+    scrollView.autohidesScrollers = true
+
+    let textView = NSTextView()
+    textView.isRichText = false
+    textView.allowsUndo = true
+    textView.drawsBackground = false
+    textView.isEditable = true
+    textView.isSelectable = true
+    textView.font = .systemFont(ofSize: 14)
+    textView.textColor = .textColor
+    textView.delegate = context.coordinator
+    textView.textContainerInset = NSSize(width: 10, height: 12)
+    textView.isHorizontallyResizable = false
+    textView.isVerticallyResizable = true
+    textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+    textView.textContainer?.widthTracksTextView = true
+    textView.textContainer?.heightTracksTextView = false
+    textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+    textView.textContainer?.lineFragmentPadding = 0
+
+    scrollView.documentView = textView
+    context.coordinator.apply(text: text, to: textView, resetSelection: true)
+    context.coordinator.syncHeight(textView: textView, scrollView: scrollView)
+    return scrollView
+  }
+
+  func updateNSView(_ scrollView: NSScrollView, context: Context) {
+    guard let textView = scrollView.documentView as? NSTextView else {
+      return
+    }
+
+    let identityChanged = context.coordinator.lastIdentity != identity
+    context.coordinator.lastIdentity = identity
+
+    if identityChanged || textView.string != text {
+      context.coordinator.apply(text: text, to: textView, resetSelection: identityChanged)
+    }
+
+    context.coordinator.syncHeight(textView: textView, scrollView: scrollView)
+  }
+
+  @MainActor
+  final class Coordinator: NSObject, NSTextViewDelegate {
+    private let parent: AutoSizingEditableTextView
+    var lastIdentity: String?
+    private var lastHeight: CGFloat
+
+    init(_ parent: AutoSizingEditableTextView) {
+      self.parent = parent
+      lastHeight = parent.minHeight
+      lastIdentity = parent.identity
+    }
+
+    func textDidChange(_ notification: Notification) {
+      guard let textView = notification.object as? NSTextView else {
+        return
+      }
+
+      parent.text = textView.string
+      if let scrollView = textView.enclosingScrollView {
+        syncHeight(textView: textView, scrollView: scrollView)
+      }
+    }
+
+    func apply(text: String, to textView: NSTextView, resetSelection: Bool) {
+      let selectedRange = textView.selectedRange()
+      let attributedText = NSAttributedString(string: text, attributes: textAttributes)
+      textView.textStorage?.setAttributedString(attributedText)
+      textView.typingAttributes = textAttributes
+
+      if resetSelection {
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        textView.enclosingScrollView?.contentView.scroll(to: .zero)
+        if let scrollView = textView.enclosingScrollView {
+          scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
+        return
+      }
+
+      let safeLocation = min(selectedRange.location, textView.string.count)
+      let safeLength = min(selectedRange.length, textView.string.count - safeLocation)
+      textView.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
+    }
+
+    func syncHeight(textView: NSTextView, scrollView: NSScrollView) {
+      guard let textContainer = textView.textContainer else {
+        return
+      }
+
+      let width = max(scrollView.contentSize.width, 1)
+      textContainer.containerSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
+      textView.layoutManager?.ensureLayout(for: textContainer)
+
+      let usedHeight = textView.layoutManager?.usedRect(for: textContainer).height ?? 0
+      let contentHeight = ceil(usedHeight + textView.textContainerInset.height * 2)
+      let nextHeight = min(max(contentHeight, parent.minHeight), parent.maxHeight)
+
+      scrollView.hasVerticalScroller = parent.allowsScrolling && contentHeight > parent.maxHeight
+      if abs(lastHeight - nextHeight) > 0.5 {
+        lastHeight = nextHeight
+        parent.measuredHeight = nextHeight
+      }
+    }
+
+    private var textAttributes: [NSAttributedString.Key: Any] {
+      let paragraphStyle = NSMutableParagraphStyle()
+      paragraphStyle.lineSpacing = 4
+      paragraphStyle.lineBreakMode = .byWordWrapping
+      return [
+        .font: NSFont.systemFont(ofSize: 14),
+        .foregroundColor: NSColor.textColor,
+        .paragraphStyle: paragraphStyle
+      ]
+    }
   }
 }
