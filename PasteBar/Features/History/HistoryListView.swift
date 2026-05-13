@@ -297,7 +297,11 @@ private final class HistoryRowRegistry {
     let rowFrame = rowView.convert(rowView.bounds, to: documentView)
     let visibleRect = scrollView.contentView.documentVisibleRect
 
-    if !force, rowFrame.intersects(visibleRect) {
+    if
+      !force,
+      rowFrame.minY >= visibleRect.minY,
+      rowFrame.maxY <= visibleRect.maxY
+    {
       return
     }
 
