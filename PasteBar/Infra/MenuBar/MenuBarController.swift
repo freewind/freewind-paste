@@ -2,6 +2,8 @@ import AppKit
 
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
+  private static let statusBarImage = makeStatusBarImage()
+
   private var statusItem: NSStatusItem?
   private var onOpen: (() -> Void)?
   private var onSettings: (() -> Void)?
@@ -28,8 +30,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
       return
     }
 
-    button.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "PasteBar")
+    button.image = Self.statusBarImage
     button.imagePosition = .imageOnly
+    button.imageScaling = .scaleProportionallyDown
     button.target = self
     button.action = #selector(handleStatusItemClick(_:))
     button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -86,5 +89,56 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
     statusItem?.menu = nil
     contextMenu = nil
+  }
+
+  private static func makeStatusBarImage() -> NSImage {
+    let size = NSSize(width: 18, height: 18)
+    let image = NSImage(size: size, flipped: false) { rect in
+      guard let context = NSGraphicsContext.current?.cgContext else {
+        return false
+      }
+
+      let body = NSBezierPath(
+        roundedRect: NSRect(x: 2.5, y: 1.5, width: 13, height: 13.5),
+        xRadius: 3.5,
+        yRadius: 3.5
+      )
+      let clip = NSBezierPath(
+        roundedRect: NSRect(x: 5, y: 11, width: 8, height: 5),
+        xRadius: 2.3,
+        yRadius: 2.3
+      )
+      let bar1 = NSBezierPath(
+        roundedRect: NSRect(x: 5, y: 9, width: 8, height: 1.6),
+        xRadius: 0.8,
+        yRadius: 0.8
+      )
+      let bar2 = NSBezierPath(
+        roundedRect: NSRect(x: 5, y: 6.2, width: 8, height: 1.6),
+        xRadius: 0.8,
+        yRadius: 0.8
+      )
+      let bar3 = NSBezierPath(
+        roundedRect: NSRect(x: 5, y: 3.4, width: 8, height: 1.6),
+        xRadius: 0.8,
+        yRadius: 0.8
+      )
+
+      NSColor.black.setFill()
+      body.fill()
+      clip.fill()
+
+      context.saveGState()
+      context.setBlendMode(.clear)
+      bar1.fill()
+      bar2.fill()
+      bar3.fill()
+      context.restoreGState()
+
+      return rect.intersects(body.bounds.union(clip.bounds))
+    }
+    image.isTemplate = true
+    image.accessibilityDescription = "PasteBar"
+    return image
   }
 }
