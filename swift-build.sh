@@ -142,7 +142,7 @@ build_product() {
 }
 
 reveal_product() {
-  local product_path linked_path
+  local product_path linked_path product_dir
 
   refresh_build_settings
   product_path="$(resolve_product_path)"
@@ -152,8 +152,9 @@ reveal_product() {
   fi
 
   linked_path="${BUILD_DIR}/$(basename "${product_path}")"
+  product_dir="$(dirname "${product_path}")"
   rtk ln -sfn "${product_path}" "${linked_path}"
-  rtk open "${BUILD_DIR}"
+  rtk open "${product_dir}"
 
   printf 'Root: %s\n' "${ROOT_DIR}"
   printf 'Project: %s\n' "${PROJECT_FILE}"
