@@ -75,8 +75,8 @@ resolve_scheme_name() {
 
   local schemes_json scheme_count fallback_scheme
   schemes_json="$(xcodebuild -project "${PROJECT_FILE}" -list -json 2>/dev/null || true)"
-  fallback_scheme="$(printf '%s\n' "${schemes_json}" | rtk jq -r '.project.schemes[0] // empty')"
-  scheme_count="$(printf '%s\n' "${schemes_json}" | rtk jq -r '(.project.schemes // []) | length')"
+  fallback_scheme="$(printf '%s\n' "${schemes_json}" | jq -r '.project.schemes[0] // empty')"
+  scheme_count="$(printf '%s\n' "${schemes_json}" | jq -r '(.project.schemes // []) | length')"
 
   if [[ "${scheme_count}" == "1" && -n "${fallback_scheme}" ]]; then
     printf '%s\n' "${fallback_scheme}"
@@ -89,7 +89,7 @@ resolve_scheme_name() {
 
 generate_project() {
   if [[ -f "${ROOT_DIR}/project.yml" ]]; then
-    rtk xcodegen generate --spec "${ROOT_DIR}/project.yml"
+    xcodegen generate --spec "${ROOT_DIR}/project.yml"
   fi
 
   PROJECT_FILE="$(resolve_project_file)"
@@ -170,9 +170,9 @@ restart_app() {
     return 1
   fi
 
-  rtk ln -sfn "${app_bundle}" "${BUILD_DIR}/$(basename "${app_bundle}")"
+  ln -sfn "${app_bundle}" "${BUILD_DIR}/$(basename "${app_bundle}")"
   if [[ -n "${process_name}" ]]; then
-    rtk pkill -x "${process_name}" || true
+    pkill -x "${process_name}" || true
   fi
 
   nohup "${app_bin}" >"${APP_LOG_PATH}" 2>&1 </dev/null &
@@ -187,17 +187,17 @@ restart_app() {
 }
 
 list_watch_files() {
-  if rtk git -C "${ROOT_DIR}" rev-parse --show-toplevel >/dev/null 2>&1; then
+  if git -C "${ROOT_DIR}" rev-parse --show-toplevel >/dev/null 2>&1; then
     (
       cd "${ROOT_DIR}"
-      rtk git ls-files -co --exclude-standard --deduplicate
+      git ls-files -co --exclude-standard --deduplicate
     )
     return 0
   fi
 
   (
     cd "${ROOT_DIR}"
-    rtk fd -HI -t f \
+    fd -HI -t f \
       --exclude .git \
       --exclude build \
       --exclude DerivedData \
@@ -215,7 +215,7 @@ watch_fingerprint() {
     shasum -a 1 | awk '{print $1}'
 }
 
-rtk mkdir -p "${BUILD_DIR}"
+mkdir -p "${BUILD_DIR}"
 
 generate_project
 build_app

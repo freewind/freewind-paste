@@ -57,7 +57,7 @@ resolve_project_file() {
 scheme_exists() {
   local scheme="$1"
   [[ -n "${scheme}" ]] || return 1
-  rtk xcodebuild \
+  xcodebuild \
     -project "${PROJECT_FILE}" \
     -scheme "${scheme}" \
     -configuration "${CONFIGURATION}" \
@@ -71,9 +71,9 @@ resolve_scheme_name() {
   fi
 
   local schemes_json scheme_count fallback_scheme
-  schemes_json="$(rtk xcodebuild -project "${PROJECT_FILE}" -list -json 2>/dev/null || true)"
-  fallback_scheme="$(printf '%s\n' "${schemes_json}" | rtk jq -r '.project.schemes[0] // empty')"
-  scheme_count="$(printf '%s\n' "${schemes_json}" | rtk jq -r '(.project.schemes // []) | length')"
+  schemes_json="$(xcodebuild -project "${PROJECT_FILE}" -list -json 2>/dev/null || true)"
+  fallback_scheme="$(printf '%s\n' "${schemes_json}" | jq -r '.project.schemes[0] // empty')"
+  scheme_count="$(printf '%s\n' "${schemes_json}" | jq -r '(.project.schemes // []) | length')"
 
   if [[ "${scheme_count}" == "1" && -n "${fallback_scheme}" ]]; then
     printf '%s\n' "${fallback_scheme}"
@@ -86,7 +86,7 @@ resolve_scheme_name() {
 
 generate_project() {
   if [[ -f "${ROOT_DIR}/project.yml" ]]; then
-    rtk xcodegen generate --spec "${ROOT_DIR}/project.yml"
+    xcodegen generate --spec "${ROOT_DIR}/project.yml"
   fi
 
   PROJECT_FILE="$(resolve_project_file)"
@@ -94,7 +94,7 @@ generate_project() {
 }
 
 fetch_build_settings() {
-  rtk xcodebuild \
+  xcodebuild \
     -project "${PROJECT_FILE}" \
     -scheme "${SCHEME_NAME}" \
     -configuration "${CONFIGURATION}" \
@@ -131,11 +131,11 @@ resolve_product_path() {
 
 build_product() {
   printf '\n==> Building %s (%s)\n' "${SCHEME_NAME}" "${CONFIGURATION}"
-  if ! rtk xcodebuild \
+  if ! xcodebuild \
     -project "${PROJECT_FILE}" \
     -scheme "${SCHEME_NAME}" \
     -configuration "${CONFIGURATION}" \
-    build | rtk tee "${BUILD_LOG_PATH}"; then
+    build | tee "${BUILD_LOG_PATH}"; then
     printf 'Build failed.\n' >&2
     return 1
   fi
@@ -153,8 +153,8 @@ reveal_product() {
 
   linked_path="${BUILD_DIR}/$(basename "${product_path}")"
   product_dir="$(dirname "${product_path}")"
-  rtk ln -sfn "${product_path}" "${linked_path}"
-  rtk open "${product_dir}"
+  ln -sfn "${product_path}" "${linked_path}"
+  open "${product_dir}"
 
   printf 'Root: %s\n' "${ROOT_DIR}"
   printf 'Project: %s\n' "${PROJECT_FILE}"
@@ -164,7 +164,7 @@ reveal_product() {
   printf 'Build log: %s\n' "${BUILD_LOG_PATH}"
 }
 
-rtk mkdir -p "${BUILD_DIR}"
+mkdir -p "${BUILD_DIR}"
 
 generate_project
 build_product
