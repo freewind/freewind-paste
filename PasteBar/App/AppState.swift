@@ -340,7 +340,7 @@ final class AppState {
       return event
     }
 
-    if isPreviewTextInputActive, popupShortcutAction(for: event) != .closePopup {
+    if isPreviewTextInputFocused(), popupShortcutAction(for: event) != .closePopup {
       return event
     }
 
@@ -423,7 +423,7 @@ final class AppState {
   }
 
   private func shouldBypassDeleteShortcut() -> Bool {
-    if isPreviewTextInputActive {
+    if isPreviewTextInputFocused() {
       return true
     }
 
@@ -438,11 +438,14 @@ final class AppState {
     return true
   }
 
-  private func shouldBypassPopupShortcut(_ action: PopupShortcutAction) -> Bool {
-    if action == .paste || action == .nativePaste {
-      return isEditingTextInput()
+  private func isPreviewTextInputFocused() -> Bool {
+    guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
+      return false
     }
+    return !responder.isFieldEditor
+  }
 
+  private func shouldBypassPopupShortcut(_ action: PopupShortcutAction) -> Bool {
     guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
       return false
     }
@@ -457,10 +460,6 @@ final class AppState {
     default:
       return false
     }
-  }
-
-  private func isEditingTextInput() -> Bool {
-    popupController.currentWindow?.firstResponder is NSTextView
   }
 
   private func capturePasteTargetApp() {
