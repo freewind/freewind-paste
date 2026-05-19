@@ -66,6 +66,7 @@
 		3E273761DEA980AAA86487BF /* ClipRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRepository.swift; sourceTree = "<group>"; };
 		3EA6577AB4CC82C4BE7BBEFD /* CopyCommandMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyCommandMonitor.swift; sourceTree = "<group>"; };
 		3FAE6617585BECB182C51E3B /* FilePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePreviewView.swift; sourceTree = "<group>"; };
+		41AC82AEC9E42A807494F383 /* freewind_paste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = freewind_paste.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4398B6C6DB2CF7B283FDFE65 /* ClipMeta.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipMeta.swift; sourceTree = "<group>"; };
 		4409185A59B375B0C4057EB0 /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
 		47E3DD3E6887D93D23147658 /* ClipItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipItem.swift; sourceTree = "<group>"; };
@@ -91,7 +92,6 @@
 		C438C0859D14B6F1282D9F69 /* HistoryRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryRowView.swift; sourceTree = "<group>"; };
 		D1AE9EB254AA0DE72CC7ABE8 /* AccessibilityPasteTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPasteTrigger.swift; sourceTree = "<group>"; };
 		D30B455374F60AF5DBAFA6E6 /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
-		D554605F1FA5C58B7909277A /* PasteBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PasteBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA02DA55EF0B0DDDF4305CA7 /* GroupedItems.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupedItems.swift; sourceTree = "<group>"; };
 		E024217AFB0D12AD817C94EB /* ClipboardPasteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardPasteService.swift; sourceTree = "<group>"; };
 		E18C376D453F39723AC47FBA /* PasteBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteBarApp.swift; sourceTree = "<group>"; };
@@ -134,7 +134,7 @@
 		193814C6E3153A872F3456C3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D554605F1FA5C58B7909277A /* PasteBar.app */,
+				41AC82AEC9E42A807494F383 /* freewind_paste.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -328,7 +328,7 @@
 			packageProductDependencies = (
 			);
 			productName = PasteBar;
-			productReference = D554605F1FA5C58B7909277A /* PasteBar.app */;
+			productReference = 41AC82AEC9E42A807494F383 /* freewind_paste.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -502,7 +502,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.freewind.PasteBar;
-				PRODUCT_NAME = PasteBar;
+				PRODUCT_NAME = freewind_paste;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
 			};
@@ -578,7 +578,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.freewind.PasteBar;
-				PRODUCT_NAME = PasteBar;
+				PRODUCT_NAME = freewind_paste;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
 			};

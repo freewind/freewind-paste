@@ -1,10 +1,16 @@
 name: PasteBar
 options:
   minimumXcodeGenVersion: 2.38.0
+schemes:
+  PasteBar:
+    build:
+      targets:
+        PasteBar: all
 targets:
   PasteBar:
     type: application
     platform: macOS
+    productName: freewind_paste
     deploymentTarget: "14.0"
     sources:
       - path: PasteBar
@@ -13,7 +19,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.freewind.PasteBar
-        PRODUCT_NAME: PasteBar
+        PRODUCT_NAME: freewind_paste
         SWIFT_VERSION: 6.0
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         GENERATE_INFOPLIST_FILE: YES
