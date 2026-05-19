@@ -1,6 +1,6 @@
 import Foundation
 
-struct ClipContent: Codable, Equatable, Hashable {
+struct ClipContent: Codable, Equatable, Hashable, Sendable {
   var text: String?
   var imageAssetPath: String?
   var filePaths: [String]?

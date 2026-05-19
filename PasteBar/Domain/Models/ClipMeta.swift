@@ -1,6 +1,6 @@
 import Foundation
 
-struct ClipMeta: Codable, Equatable, Hashable {
+struct ClipMeta: Codable, Equatable, Hashable, Sendable {
   var textPreview: String?
   var languageGuess: String?
 

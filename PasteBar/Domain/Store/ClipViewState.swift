@@ -77,12 +77,27 @@ final class ClipViewState {
   var selectedIDs: Set<String>
   var checkedIDs: Set<String>
   var focusedID: String?
-  var currentTab: MainTab
-  var searchQuery: String
-  var kindFilter: ClipKindFilter
+  var currentTab: MainTab {
+    didSet {
+      refreshSearchResults()
+    }
+  }
+  var searchQuery: String {
+    didSet {
+      refreshSearchResults()
+    }
+  }
+  var kindFilter: ClipKindFilter {
+    didSet {
+      refreshSearchResults()
+    }
+  }
   private(set) var viewportMoveRequestID: Int
   var selectionAnchorID: String?
   private var pendingViewportMoveCommand: ViewportMoveCommand?
+  private(set) var expandedSearchMatchedIDs: Set<String>
+  @ObservationIgnored private var searchGeneration: Int
+  @ObservationIgnored private var searchTask: Task<Void, Never>?
 
   init(
     store: ClipStore,
@@ -104,33 +119,24 @@ final class ClipViewState {
     self.viewportMoveRequestID = viewportMoveRequestID
     pendingViewportMoveCommand = nil
     selectionAnchorID = focusedID ?? selectedIDs.first
+    expandedSearchMatchedIDs = []
+    searchGeneration = 0
+    searchTask = nil
+    refreshSearchResults()
   }
 
   var visibleItems: [ClipItem] {
-    store.items
-      .filter { item in
-        switch currentTab {
-        case .history:
-          return !item.isTrashed
-        case .favorites:
-          return !item.isTrashed && item.favorite
-        case .trash:
-          return item.isTrashed
-        }
-      }
-      .filter { item in
-        switch kindFilter {
-        case .all:
-          return true
-        case .text:
-          return item.kind == .text
-        case .image:
-          return item.kind == .image
-        case .file:
-          return item.kind == .file
-        }
-      }
-      .filter { SearchService.matches(item: $0, query: searchQuery) }
+    let scopedItems = filteredItemsForCurrentScope()
+    let needle = SearchService.normalizedNeedle(for: searchQuery)
+
+    guard !needle.isEmpty else {
+      return scopedItems
+    }
+
+    return scopedItems.filter { item in
+      SearchService.matchesPreview(item: item, needle: needle)
+        || expandedSearchMatchedIDs.contains(item.id)
+    }
   }
 
   var groupedVisibleItems: [GroupedItems] {
@@ -396,5 +402,79 @@ final class ClipViewState {
 
   func clearCheckedVisible() {
     checkedIDs.subtract(visibleItemIDs)
+  }
+
+  func refreshSearchResults() {
+    searchTask?.cancel()
+    searchGeneration += 1
+
+    let needle = SearchService.normalizedNeedle(for: searchQuery)
+    expandedSearchMatchedIDs = []
+
+    guard !needle.isEmpty else {
+      return
+    }
+
+    let scopedItems = filteredItemsForCurrentScope()
+    let quickMatchIDs = Set(
+      scopedItems.lazy
+        .filter { SearchService.matchesPreview(item: $0, needle: needle) }
+        .map(\.id)
+    )
+    let generation = searchGeneration
+
+    searchTask = Task.detached(priority: .userInitiated) { [scopedItems, needle, quickMatchIDs] in
+      try? await Task.sleep(for: .milliseconds(120))
+      guard !Task.isCancelled else {
+        return
+      }
+
+      let expandedIDs = SearchService.expandedMatchIDs(
+        in: scopedItems,
+        needle: needle,
+        excluding: quickMatchIDs
+      )
+      guard !Task.isCancelled else {
+        return
+      }
+
+      await MainActor.run {
+        guard generation == self.searchGeneration else {
+          return
+        }
+        self.expandedSearchMatchedIDs = expandedIDs
+        if self.selectedIDs.isEmpty, !self.visibleItems.isEmpty {
+          self.selectFirstVisible()
+        } else {
+          self.normalizeSelection()
+        }
+      }
+    }
+  }
+
+  private func filteredItemsForCurrentScope() -> [ClipItem] {
+    store.items
+      .filter { item in
+        switch currentTab {
+        case .history:
+          return !item.isTrashed
+        case .favorites:
+          return !item.isTrashed && item.favorite
+        case .trash:
+          return item.isTrashed
+        }
+      }
+      .filter { item in
+        switch kindFilter {
+        case .all:
+          return true
+        case .text:
+          return item.kind == .text
+        case .image:
+          return item.kind == .image
+        case .file:
+          return item.kind == .file
+        }
+      }
   }
 }

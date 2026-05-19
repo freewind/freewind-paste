@@ -1,6 +1,6 @@
 import Foundation
 
-struct ClipItem: Identifiable, Codable, Equatable, Hashable {
+struct ClipItem: Identifiable, Codable, Equatable, Hashable, Sendable {
   let id: String
   let kind: ClipKind
   var createdAt: Date

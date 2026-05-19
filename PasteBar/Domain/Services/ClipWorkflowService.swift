@@ -254,6 +254,7 @@ final class ClipWorkflowService {
   }
 
   private func commitItems() {
+    uiState.refreshSearchResults()
     repository.commitItems(store.items)
   }
 }
