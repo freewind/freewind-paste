@@ -1,11 +1,20 @@
 import AppKit
 
 struct HistoryTableRowState: Equatable {
-  let item: ClipItem
+  enum Tone: Equatable {
+    case today
+    case yesterday
+    case earlier
+  }
+
+  let label: String
+  let title: String
   let isSelected: Bool
   let isFocused: Bool
   let isChecked: Bool
   let showsFavorite: Bool
+  let isFavorite: Bool
+  let tone: Tone
 }
 
 final class HistoryTableView: NSTableView {
@@ -189,11 +198,11 @@ final class HistoryFavoriteCellView: NSTableCellView {
     if rowState.showsFavorite {
       button.isHidden = false
       button.image = NSImage(
-        systemSymbolName: rowState.item.favorite ? "star.fill" : "star",
+        systemSymbolName: rowState.isFavorite ? "star.fill" : "star",
         accessibilityDescription: nil
       )
-      button.contentTintColor = rowState.item.favorite ? .systemYellow : .secondaryLabelColor
-      button.alphaValue = rowState.item.favorite ? 1 : 0.55
+      button.contentTintColor = rowState.isFavorite ? .systemYellow : .secondaryLabelColor
+      button.alphaValue = rowState.isFavorite ? 1 : 0.55
       button.onPress = onToggle
     } else {
       button.isHidden = true
@@ -253,13 +262,10 @@ final class HistoryContentCellView: NSTableCellView {
   }
 
   func configure(rowState: HistoryTableRowState) {
-    let item = rowState.item
-    let label = item.label.trimmingCharacters(in: .whitespacesAndNewlines)
-
-    badgeContainer.isHidden = label.isEmpty
-    badgeLabel.stringValue = label
-    titleLabel.stringValue = item.listRowTitle
-    titleLabel.textColor = item.listRowTextColor
+    badgeContainer.isHidden = rowState.label.isEmpty
+    badgeLabel.stringValue = rowState.label
+    titleLabel.stringValue = rowState.title
+    titleLabel.textColor = rowState.textColor
   }
 }
 
@@ -301,7 +307,18 @@ private extension NSView {
   }
 }
 
-private extension ClipItem {
+extension ClipItem {
+  var historyRowTone: HistoryTableRowState.Tone {
+    switch DateGroup.title(for: groupingDate) {
+    case "Today":
+      return .today
+    case "Yesterday":
+      return .yesterday
+    default:
+      return .earlier
+    }
+  }
+
   var listRowTitle: String {
     switch kind {
     case .text:
@@ -327,6 +344,19 @@ private extension ClipItem {
     case "Yesterday":
       return .labelColor.withAlphaComponent(0.82)
     default:
+      return .labelColor.withAlphaComponent(0.64)
+    }
+  }
+}
+
+private extension HistoryTableRowState {
+  var textColor: NSColor {
+    switch tone {
+    case .today:
+      return .labelColor
+    case .yesterday:
+      return .labelColor.withAlphaComponent(0.82)
+    case .earlier:
       return .labelColor.withAlphaComponent(0.64)
     }
   }

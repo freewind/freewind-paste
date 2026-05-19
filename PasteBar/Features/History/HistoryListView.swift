@@ -71,11 +71,14 @@ private extension HistoryTableRepresentable {
     func rowState(at index: Int) -> HistoryTableRowState {
       let item = visibleItems[index]
       return HistoryTableRowState(
-        item: item,
+        label: item.label.trimmingCharacters(in: .whitespacesAndNewlines),
+        title: item.listRowTitle,
         isSelected: selectedIDs.contains(item.id),
         isFocused: focusedID == item.id,
         isChecked: checkedIDs.contains(item.id),
-        showsFavorite: currentTab != .trash
+        showsFavorite: currentTab != .trash,
+        isFavorite: item.favorite,
+        tone: item.historyRowTone
       )
     }
   }
