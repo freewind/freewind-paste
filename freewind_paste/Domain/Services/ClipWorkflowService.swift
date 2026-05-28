@@ -190,20 +190,10 @@ final class ClipWorkflowService {
   }
 
   func pruneStaleItems() {
-    pruneExpiredItems()
-  }
-
-  func pruneOnBackground() {
-    pruneExpiredItems()
-  }
-
-  private func pruneExpiredItems() {
-    let changed = store.pruneEphemeralLongText() || store.pruneStaleNonFavorites()
-    guard changed else {
-      return
+    if store.pruneStaleNonFavorites() {
+      uiState.normalizeSelection()
+      commitItems()
     }
-    uiState.normalizeSelection()
-    commitItems()
   }
 
   private func paste(
