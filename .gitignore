@@ -5,3 +5,5 @@ DerivedData/
 *.xcodeproj/xcuserdata/
 build/
 dist/
+.codegraph/
+.cursor/
