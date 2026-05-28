@@ -1,6 +1,8 @@
 import Foundation
 
 final class ClipPersistence {
+  static let dataDirectoryName = ".freewind_paste"
+
   let baseDirectoryURL: URL
   let itemsURL: URL
   let settingsURL: URL
@@ -9,9 +11,10 @@ final class ClipPersistence {
   private let encoder: JSONEncoder
   private let decoder: JSONDecoder
 
-  init(appFolderName: String = "freewind_paste") {
-    let supportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    baseDirectoryURL = supportURL.appendingPathComponent(appFolderName, isDirectory: true)
+  init(fileManager: FileManager = .default) {
+    // @rule 数据目录固定 ~/.freewind_paste
+    baseDirectoryURL = fileManager.homeDirectoryForCurrentUser
+      .appendingPathComponent(Self.dataDirectoryName, isDirectory: true)
     itemsURL = baseDirectoryURL.appendingPathComponent("items.jsonl")
     settingsURL = baseDirectoryURL.appendingPathComponent("settings.json")
     assetsURL = baseDirectoryURL.appendingPathComponent("assets", isDirectory: true)
@@ -21,10 +24,9 @@ final class ClipPersistence {
     encoder.dateEncodingStrategy = .iso8601
     decoder.dateDecodingStrategy = .iso8601
 
-    try? FileManager.default.createDirectory(
+    try? fileManager.createDirectory(
       at: assetsURL.appendingPathComponent("images", isDirectory: true),
-      withIntermediateDirectories: true,
-      attributes: nil
+      withIntermediateDirectories: true
     )
   }
 
@@ -73,8 +75,7 @@ final class ClipPersistence {
     try? FileManager.default.removeItem(at: assetsURL)
     try? FileManager.default.createDirectory(
       at: assetsURL.appendingPathComponent("images", isDirectory: true),
-      withIntermediateDirectories: true,
-      attributes: nil
+      withIntermediateDirectories: true
     )
   }
 }
