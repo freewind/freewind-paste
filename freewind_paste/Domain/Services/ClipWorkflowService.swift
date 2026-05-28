@@ -264,7 +264,9 @@ final class ClipWorkflowService {
   }
 
   private func commitItems() {
-    uiState.refreshSearchResults()
+    if !SearchService.normalizedNeedle(for: uiState.searchQuery).isEmpty {
+      uiState.refreshSearchResults()
+    }
     repository.commitItems(store.items)
   }
 }

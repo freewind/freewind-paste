@@ -13,9 +13,6 @@ struct SearchBarView: View {
       focusNonce: appState.searchFocusNonce
     )
     .frame(height: 48)
-    .onChange(of: uiState.searchQuery) { _, _ in
-      uiState.selectFirstVisible()
-    }
   }
 }
 

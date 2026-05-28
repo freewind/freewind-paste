@@ -409,13 +409,17 @@ final class ClipViewState {
     searchGeneration += 1
 
     let needle = SearchService.normalizedNeedle(for: searchQuery)
-    expandedSearchMatchedIDs = []
 
     guard !needle.isEmpty else {
+      expandedSearchMatchedIDs = []
       return
     }
 
     let scopedItems = filteredItemsForCurrentScope()
+    let scopedItemIDs = Set(scopedItems.map(\.id))
+    // @rule 搜索 expanded 阶段 stale-while-revalidate：不清空已有 expanded 命中，仅剔除 scope 外项，等新结果落地再替换
+    expandedSearchMatchedIDs = expandedSearchMatchedIDs.intersection(scopedItemIDs)
+
     let quickMatchIDs = Set(
       scopedItems.lazy
         .filter { SearchService.matchesPreview(item: $0, needle: needle) }
@@ -423,7 +427,14 @@ final class ClipViewState {
     )
     let generation = searchGeneration
 
+    normalizeSelection()
+
     searchTask = Task.detached(priority: .userInitiated) { [scopedItems, needle, quickMatchIDs] in
+      try? await Task.sleep(for: .milliseconds(50))
+      guard !Task.isCancelled else {
+        return
+      }
+
       let expandedIDs = SearchService.expandedMatchIDs(
         in: scopedItems,
         needle: needle,
