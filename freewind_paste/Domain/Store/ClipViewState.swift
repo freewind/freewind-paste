@@ -424,11 +424,6 @@ final class ClipViewState {
     let generation = searchGeneration
 
     searchTask = Task.detached(priority: .userInitiated) { [scopedItems, needle, quickMatchIDs] in
-      try? await Task.sleep(for: .milliseconds(120))
-      guard !Task.isCancelled else {
-        return
-      }
-
       let expandedIDs = SearchService.expandedMatchIDs(
         in: scopedItems,
         needle: needle,
