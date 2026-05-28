@@ -25,17 +25,31 @@ function isAppBundle(path: string) {
   }
 }
 
-function printHelp() {
-  console.log(`用法: bun swift-watch.mts [debug|release] [--project PATH] [--scheme NAME] [--target NAME] [--help]`)
-}
-
 function resolveConfiguration(value: string) {
   const v = value.toLowerCase()
-  if (v === 'debug' || v === 'd' || v === '') return 'Debug'
-  if (v === 'release' || v === 'r' || v === 'build') return 'Release'
+  if (v === 'debug' || v === 'd') return 'Debug'
+  if (v === 'release' || v === 'r' || v === 'build' || v === 'production' || v === 'prod' || v === 'p') {
+    return 'Release'
+  }
   errln(`不支持的模式: ${value}`)
   printHelp()
   process.exit(1)
+}
+
+function printHelp() {
+  console.log(`用法: bun swift-watch.mts [debug|release|production] [选项]
+
+配置:
+  debug | d                 Debug 构建（默认）
+  release | r | build       Release 构建
+  production | prod | p     Release 构建（同 release）
+
+选项:
+  -c, --configuration, --config <模式>  构建配置（同上）
+  --project <路径>                      project.yml 路径
+  --scheme <名称>                       Xcode scheme
+  --target <名称>                       application target
+  -h, --help                            显示帮助`)
 }
 
 function parseArgs(argv: string[]) {
@@ -46,18 +60,28 @@ function parseArgs(argv: string[]) {
 
   let i = 0
   while (i < argv.length) {
-    switch (argv[i]) {
-      case '--help':
-      case '-h':
+    const arg = argv[i]
+    const lower = arg.toLowerCase()
+    if (arg === '--help' || arg === '-h') {
+      printHelp()
+      process.exit(0)
+    }
+    if (arg === '--configuration' || arg === '--config' || arg === '-c') {
+      if (i + 1 >= argv.length) {
+        errln(`缺少参数值: ${arg}`)
         printHelp()
-        process.exit(0)
-      case 'debug':
-      case 'd':
-      case 'release':
-      case 'r':
-      case 'build':
-        configuration = resolveConfiguration(argv[i])
-        break
+        process.exit(1)
+      }
+      configuration = resolveConfiguration(argv[++i])
+      i += 1
+      continue
+    }
+    if (['debug', 'd', 'release', 'r', 'build', 'production', 'prod', 'p'].includes(lower)) {
+      configuration = resolveConfiguration(arg)
+      i += 1
+      continue
+    }
+    switch (arg) {
       case '--project':
         if (i + 1 >= argv.length) {
           errln('缺少参数值: --project')
@@ -80,8 +104,9 @@ function parseArgs(argv: string[]) {
         targetArg = argv[++i]
         break
       default:
-        if (!projectSpecArg) projectSpecArg = argv[i]
+        if (!projectSpecArg) projectSpecArg = arg
         else {
+          errln(`未知参数: ${arg}`)
           printHelp()
           process.exit(1)
         }
@@ -92,7 +117,7 @@ function parseArgs(argv: string[]) {
 }
 
 function buildArgs(parsed: ReturnType<typeof parseArgs>) {
-  const args = [parsed.configuration]
+  const args = ['--configuration', parsed.configuration === 'Release' ? 'release' : 'debug']
   if (parsed.projectSpecArg) {
     args.push('--project', parsed.projectSpecArg.startsWith('/') ? parsed.projectSpecArg : join(ROOT_DIR, parsed.projectSpecArg))
   }
