@@ -195,21 +195,25 @@ private extension HistoryTableRepresentable {
       )
 
       let previousState = renderState
-      let needsFullReload = previousState.visibleItems.map(\.id) != nextState.visibleItems.map(\.id)
-        || previousState.currentTab != nextState.currentTab
-
       renderState = nextState
 
-      if needsFullReload {
+      let prevIDs = previousState.visibleIDs
+      let nextIDs = nextState.visibleIDs
+
+      if previousState.currentTab != nextState.currentTab {
         tableView.reloadData()
-      } else {
+      } else if prevIDs == nextIDs {
         reloadChangedRows(from: previousState, to: nextState)
+      } else if applyIncrementalVisibleItemUpdate(from: prevIDs, to: nextIDs, in: tableView) {
+        reloadChangedRows(from: previousState, to: nextState)
+      } else {
+        tableView.reloadData()
       }
 
       syncSelection(in: tableView)
       updateVisibleRowViews(in: tableView)
       performViewportMoveIfNeeded(from: previousState, to: nextState, in: tableView)
-      syncFocusedRowVisibility(from: previousState, to: nextState, in: tableView, force: needsFullReload)
+      syncFocusedRowVisibility(from: previousState, to: nextState, in: tableView, force: prevIDs != nextIDs)
     }
 
     func numberOfRows(in tableView: NSTableView) -> Int {
@@ -329,6 +333,80 @@ private extension HistoryTableRepresentable {
         forRowIndexes: IndexSet(changedIndexes),
         columnIndexes: IndexSet(integersIn: 0..<tableView.numberOfColumns)
       )
+    }
+
+    private func applyIncrementalVisibleItemUpdate(
+      from prevIDs: [String],
+      to nextIDs: [String],
+      in tableView: NSTableView
+    ) -> Bool {
+      if prevIDs.isEmpty || nextIDs.isEmpty {
+        return false
+      }
+
+      if Self.isSubsequence(nextIDs, in: prevIDs), nextIDs.count < prevIDs.count {
+        removeRowsKeepingSubsequence(prevIDs: prevIDs, nextIDs: nextIDs, in: tableView)
+        return true
+      }
+
+      if Self.isSubsequence(prevIDs, in: nextIDs), nextIDs.count > prevIDs.count {
+        insertRowsKeepingSubsequence(prevIDs: prevIDs, nextIDs: nextIDs, in: tableView)
+        return true
+      }
+
+      return false
+    }
+
+    private static func isSubsequence(_ sub: [String], in superSequence: [String]) -> Bool {
+      var subIndex = 0
+      for id in superSequence where subIndex < sub.count {
+        if sub[subIndex] == id {
+          subIndex += 1
+        }
+      }
+      return subIndex == sub.count
+    }
+
+    private func removeRowsKeepingSubsequence(
+      prevIDs: [String],
+      nextIDs: [String],
+      in tableView: NSTableView
+    ) {
+      var nextIndex = 0
+      var removeIndexes: [Int] = []
+
+      for (prevIndex, id) in prevIDs.enumerated() {
+        if nextIndex < nextIDs.count, id == nextIDs[nextIndex] {
+          nextIndex += 1
+        } else {
+          removeIndexes.append(prevIndex)
+        }
+      }
+
+      for index in removeIndexes.sorted(by: >) {
+        tableView.removeRows(at: IndexSet(integer: index), withAnimation: [])
+      }
+    }
+
+    private func insertRowsKeepingSubsequence(
+      prevIDs: [String],
+      nextIDs: [String],
+      in tableView: NSTableView
+    ) {
+      var prevIndex = 0
+      var insertIndexes: [Int] = []
+
+      for (nextIndex, id) in nextIDs.enumerated() {
+        if prevIndex < prevIDs.count, id == prevIDs[prevIndex] {
+          prevIndex += 1
+        } else {
+          insertIndexes.append(nextIndex)
+        }
+      }
+
+      for index in insertIndexes.sorted(by: >) {
+        tableView.insertRows(at: IndexSet(integer: index), withAnimation: [])
+      }
     }
 
     private func syncSelection(in tableView: NSTableView) {
