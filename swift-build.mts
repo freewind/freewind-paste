@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from 'bun'
+import { statSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 
 const SCRIPT_NAME = 'swift-build.mts'
@@ -14,6 +15,15 @@ const ROOT_DIR = process.env.ROOT_DIR?.trim() || process.cwd()
 
 function errln(...args: unknown[]) {
   console.error(...args)
+}
+
+// @rule macOS .app 是目录 bundle，用 stat.isDirectory 校验，不用 Bun.file().exists()
+function isAppBundle(path: string) {
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
 }
 
 function failProjectSpec(...args: unknown[]) {
@@ -281,7 +291,7 @@ if (xb.exitCode !== 0) {
   errln('构建失败')
   process.exit(1)
 }
-if (!(await Bun.file(productPath).exists())) failProjectSpec(`缺少构建产物: ${productPath}`)
+if (!isAppBundle(productPath)) failProjectSpec(`缺少构建产物: ${productPath}`)
 
 await Bun.write(
   buildMetaPath,

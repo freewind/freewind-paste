@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from 'bun'
+import { statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const BUILD_SCRIPT = join(import.meta.dir, 'swift-build.mts')
@@ -14,6 +15,14 @@ const ROOT_DIR = process.env.ROOT_DIR?.trim() || process.cwd()
 
 function errln(...args: unknown[]) {
   console.error(...args)
+}
+
+function isAppBundle(path: string) {
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
 }
 
 function printHelp() {
@@ -168,7 +177,7 @@ async function resolveExecutableName(productPath: string) {
 }
 
 async function restartApp(productPath: string, appLogPath: string) {
-  if (!(await Bun.file(productPath).exists())) {
+  if (!isAppBundle(productPath)) {
     errln(`缺少构建产物: ${productPath}`)
     process.exit(1)
   }
