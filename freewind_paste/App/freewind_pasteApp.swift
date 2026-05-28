@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct PasteBarApp: App {
+struct freewind_pasteApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
   @State private var appState = AppState()
 

@@ -6,9 +6,9 @@
 
 项目是 macOS 菜单栏剪贴板历史工具。长期状态落盘到：
 
-- `~/Library/Application Support/PasteBar/items.jsonl`
-- `~/Library/Application Support/PasteBar/settings.json`
-- `~/Library/Application Support/PasteBar/assets/images/*.png`
+- `~/.freewind_paste/items.jsonl`
+- `~/.freewind_paste/settings.json`
+- `~/.freewind_paste/assets/images/*.png`
 
 `items.jsonl` 一行一个 `ClipItem`。`settings.json` 存 `AppSettings`。图片真实位图不内嵌进 `jsonl`，只存相对路径。
 

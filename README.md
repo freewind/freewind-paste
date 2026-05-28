@@ -1,4 +1,4 @@
-# PasteBar
+# freewind_paste
 
 macOS 菜单栏剪贴板历史工具。当前实现重点：
 
@@ -14,7 +14,7 @@ macOS 菜单栏剪贴板历史工具。当前实现重点：
 目录：
 
 ```text
-~/Library/Application Support/PasteBar/
+~/.freewind_paste/
 ├── items.jsonl
 ├── settings.json
 └── assets/

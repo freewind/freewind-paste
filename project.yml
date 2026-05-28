@@ -1,28 +1,28 @@
-name: PasteBar
+name: freewind_paste
 options:
   minimumXcodeGenVersion: 2.38.0
 schemes:
-  PasteBar:
+  freewind_paste:
     build:
       targets:
-        PasteBar: all
+        freewind_paste: all
 targets:
-  PasteBar:
+  freewind_paste:
     type: application
     platform: macOS
     productName: freewind_paste
     deploymentTarget: "14.0"
     sources:
-      - path: PasteBar
+      - path: freewind_paste
     resources:
-      - path: PasteBar/Resources
+      - path: freewind_paste/Resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.freewind.PasteBar
+        PRODUCT_BUNDLE_IDENTIFIER: com.freewind.freewind_paste
         PRODUCT_NAME: freewind_paste
         SWIFT_VERSION: 6.0
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSUIElement: YES
-        INFOPLIST_KEY_NSAppleEventsUsageDescription: PasteBar 需要模拟粘贴到前台应用。
+        INFOPLIST_KEY_NSAppleEventsUsageDescription: freewind_paste 需要模拟粘贴到前台应用。
         INFOPLIST_KEY_NSHumanReadableCopyright: Freewind

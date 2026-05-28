@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "3A3A48FBAE04290058314D62"
+               BlueprintIdentifier = "93F0866DD52830C462A56415"
                BuildableName = "freewind_paste.app"
-               BlueprintName = "PasteBar"
-               ReferencedContainer = "container:PasteBar.xcodeproj">
+               BlueprintName = "freewind_paste"
+               ReferencedContainer = "container:freewind_paste.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "3A3A48FBAE04290058314D62"
+            BlueprintIdentifier = "93F0866DD52830C462A56415"
             BuildableName = "freewind_paste.app"
-            BlueprintName = "PasteBar"
-            ReferencedContainer = "container:PasteBar.xcodeproj">
+            BlueprintName = "freewind_paste"
+            ReferencedContainer = "container:freewind_paste.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -55,10 +55,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "3A3A48FBAE04290058314D62"
+            BlueprintIdentifier = "93F0866DD52830C462A56415"
             BuildableName = "freewind_paste.app"
-            BlueprintName = "PasteBar"
-            ReferencedContainer = "container:PasteBar.xcodeproj">
+            BlueprintName = "freewind_paste"
+            ReferencedContainer = "container:freewind_paste.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,10 +72,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "3A3A48FBAE04290058314D62"
+            BlueprintIdentifier = "93F0866DD52830C462A56415"
             BuildableName = "freewind_paste.app"
-            BlueprintName = "PasteBar"
-            ReferencedContainer = "container:PasteBar.xcodeproj">
+            BlueprintName = "freewind_paste"
+            ReferencedContainer = "container:freewind_paste.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

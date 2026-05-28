@@ -2,20 +2,20 @@
 import PackageDescription
 
 let package = Package(
-  name: "PasteBar",
+  name: "freewind_paste",
   platforms: [
     .macOS(.v14),
   ],
   products: [
     .executable(
-      name: "PasteBar",
-      targets: ["PasteBar"]
+      name: "freewind_paste",
+      targets: ["freewind_paste"]
     ),
   ],
   targets: [
     .executableTarget(
-      name: "PasteBar",
-      path: "PasteBar",
+      name: "freewind_paste",
+      path: "freewind_paste",
       resources: [
         .process("Resources"),
       ],

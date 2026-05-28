@@ -9,7 +9,7 @@ final class ClipPersistence {
   private let encoder: JSONEncoder
   private let decoder: JSONDecoder
 
-  init(appFolderName: String = "PasteBar") {
+  init(appFolderName: String = "freewind_paste") {
     let supportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     baseDirectoryURL = supportURL.appendingPathComponent(appFolderName, isDirectory: true)
     itemsURL = baseDirectoryURL.appendingPathComponent("items.jsonl")
@@ -44,7 +44,7 @@ final class ClipPersistence {
     let lines = try items.map { item in
       let data = try encoder.encode(item)
       guard let line = String(data: data, encoding: .utf8) else {
-        throw NSError(domain: "PasteBar.ClipPersistence", code: 1)
+        throw NSError(domain: "freewind_paste.ClipPersistence", code: 1)
       }
       return line
     }

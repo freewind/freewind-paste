@@ -37,7 +37,7 @@ final class ImageAssetStore {
       let rep = bitmap(for: image),
       let data = encodedData(for: rep, format: format, compressionFactor: compressionFactor)
     else {
-      throw NSError(domain: "PasteBar.ImageAssetStore", code: 1)
+      throw NSError(domain: "freewind_paste.ImageAssetStore", code: 1)
     }
 
     let hash = FileHash.sha256(data: data)

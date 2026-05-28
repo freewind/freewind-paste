@@ -138,7 +138,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
       return rect.intersects(body.bounds.union(clip.bounds))
     }
     image.isTemplate = true
-    image.accessibilityDescription = "PasteBar"
+    image.accessibilityDescription = "freewind_paste"
     return image
   }
 }
