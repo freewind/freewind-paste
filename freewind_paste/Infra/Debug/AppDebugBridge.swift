@@ -55,6 +55,66 @@ enum AppDebugBridge {
     )
 
     registrationTokens.append(
+      bridge.registerIntent(name: "select_first_visible") { _ in
+        appState.uiState.selectFirstVisible()
+        guard let id = appState.uiState.focusedID else {
+          return .fail("no visible items")
+        }
+        return .ok("focused \(id)")
+      }
+    )
+
+    registrationTokens.append(
+      bridge.registerIntent(name: "toggle_favorite_focused") { _ in
+        guard let id = appState.uiState.focusedID else {
+          return .fail("no focused item")
+        }
+        let wasFavorite = appState.store.item(for: id)?.favorite ?? false
+        appState.toggleFavorite(for: id)
+        let nowFavorite = appState.store.item(for: id)?.favorite ?? false
+        return .ok("favorite \(wasFavorite) -> \(nowFavorite)")
+      }
+    )
+
+    registrationTokens.append(
+      bridge.registerIntent(name: "toggle_checked_focused") { _ in
+        guard let id = appState.uiState.focusedID else {
+          return .fail("no focused item")
+        }
+        let wasChecked = appState.uiState.checkedIDs.contains(id)
+        appState.uiState.toggleChecked(id)
+        let nowChecked = appState.uiState.checkedIDs.contains(id)
+        return .ok("checked \(wasChecked) -> \(nowChecked)")
+      }
+    )
+
+    registrationTokens.append(
+      bridge.registerIntent(name: "update_focused_text", args: ["text"]) { request in
+        guard let id = appState.uiState.focusedID else {
+          return .fail("no focused item")
+        }
+        guard let item = appState.store.item(for: id), item.kind == .text else {
+          return .fail("focused item is not text")
+        }
+        let text = request.args?["text"] ?? request.text ?? "bridge-test"
+        appState.updateText(for: id, text: text)
+        let title = appState.uiState.visibleItems.first(where: { $0.id == id })?.listRowTitle ?? ""
+        return .ok("listTitle='\(title)'")
+      }
+    )
+
+    registrationTokens.append(
+      bridge.registerIntent(name: "set_tab", args: ["tab"]) { request in
+        let tabName = request.args?["tab"] ?? request.text ?? "history"
+        guard let tab = MainTab(rawValue: tabName) else {
+          return .fail("invalid tab '\(tabName)'")
+        }
+        appState.uiState.currentTab = tab
+        return .ok("tab=\(tabName)")
+      }
+    )
+
+    registrationTokens.append(
       bridge.registerNodeAction(id: "search_field", action: "set", args: ["text"]) { request in
         let text = request.args?["text"] ?? request.text ?? "test"
         appState.uiState.searchQuery = text
@@ -97,8 +157,18 @@ enum AppDebugBridge {
       "expandedMatchCount": "\(uiState.expandedSearchMatchedIDs.count)",
       "currentTab": uiState.currentTab.rawValue,
       "kindFilter": uiState.kindFilter.rawValue,
+      "checkedCount": "\(uiState.checkedIDs.count)",
+      "selectedCount": "\(uiState.selectedIDs.count)",
+      "focusedID": uiState.focusedID ?? "",
       "perfLogPath": perfLogPath,
     ]
+
+    if let focusedID = uiState.focusedID,
+       let item = uiState.visibleItems.first(where: { $0.id == focusedID }) {
+      state["focusedListTitle"] = item.listRowTitle
+      state["focusedFavorite"] = item.favorite ? "true" : "false"
+      state["focusedChecked"] = uiState.checkedIDs.contains(focusedID) ? "true" : "false"
+    }
 
     for (key, value) in PerfTrace.lastMetrics {
       state["perf.\(key)"] = value

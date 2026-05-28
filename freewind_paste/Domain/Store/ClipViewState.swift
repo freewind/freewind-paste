@@ -164,12 +164,16 @@ final class ClipViewState {
     }
 
     let nextIDs = nextItems.map(\.id)
-    guard nextIDs != visibleItemIDs else {
+    if nextIDs != visibleItemIDs {
+      visibleItems = nextItems
+      visibleItemIDs = nextIDs
       return
     }
 
-    visibleItems = nextItems
-    visibleItemIDs = nextIDs
+    // @rule 可见 ID 顺序不变时，条目内容变更也要刷新 visibleItems，供列表/预览展示
+    if nextItems != visibleItems {
+      visibleItems = nextItems
+    }
   }
 
   var groupedVisibleItems: [GroupedItems] {

@@ -211,7 +211,7 @@ private extension HistoryTableRepresentable {
           ]
         )
         tableView.reloadData()
-      } else if presentationDidChange(from: previousState, to: nextState) {
+      } else if previousState != nextState {
         reloadChangedRows(from: previousState, to: nextState, in: tableView)
       }
 
@@ -319,12 +319,6 @@ private extension HistoryTableRepresentable {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
       rebuildContextMenu(menu)
-    }
-
-    private func presentationDidChange(from previousState: RenderState, to nextState: RenderState) -> Bool {
-      previousState.checkedIDs != nextState.checkedIDs
-        || previousState.selectedIDs != nextState.selectedIDs
-        || previousState.focusedID != nextState.focusedID
     }
 
     private func reloadChangedRows(
