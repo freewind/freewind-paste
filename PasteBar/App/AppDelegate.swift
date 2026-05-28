@@ -19,4 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       self?.appState?.activatePopup()
     }
   }
+
+  func applicationDidResignActive(_ notification: Notification) {
+    Task { @MainActor [weak self] in
+      self?.appState?.pruneOnBackground()
+    }
+  }
 }

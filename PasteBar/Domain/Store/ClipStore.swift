@@ -198,6 +198,26 @@ final class ClipStore {
     return items.count != oldCount
   }
 
+  // @rule 超长文本（>500 字）仅保留约 10 分钟；收藏与回收站项不删
+  func pruneEphemeralLongText(
+    minLength: Int = 500,
+    maxAge: TimeInterval = 10 * 60,
+    now: Date = .now
+  ) -> Bool {
+    let cutoff = now.addingTimeInterval(-maxAge)
+    let oldCount = items.count
+    items.removeAll { item in
+      guard !item.favorite, item.trashedAt == nil, item.kind == .text else {
+        return false
+      }
+      guard (item.content.text?.count ?? 0) > minLength else {
+        return false
+      }
+      return item.createdAt < cutoff
+    }
+    return items.count != oldCount
+  }
+
   func clearAll() {
     items.removeAll()
   }

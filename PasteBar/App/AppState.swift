@@ -100,6 +100,10 @@ final class AppState {
     bootstrap()
   }
 
+  func pruneOnBackground() {
+    workflow.pruneOnBackground()
+  }
+
   func bootstrap() {
     guard !isBootstrapped else {
       return
