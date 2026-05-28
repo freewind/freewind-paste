@@ -79,7 +79,7 @@ final class ClipViewState {
   var focusedID: String?
   var currentTab: MainTab {
     didSet {
-      refreshSearchResults()
+      noteScopeChanged()
     }
   }
   var searchQuery: String {
@@ -89,13 +89,16 @@ final class ClipViewState {
   }
   var kindFilter: ClipKindFilter {
     didSet {
-      refreshSearchResults()
+      noteScopeChanged()
     }
   }
   private(set) var viewportMoveRequestID: Int
   var selectionAnchorID: String?
   private var pendingViewportMoveCommand: ViewportMoveCommand?
   private(set) var expandedSearchMatchedIDs: Set<String>
+  private(set) var visibleItems: [ClipItem] = []
+  private(set) var visibleItemIDs: [String] = []
+  @ObservationIgnored private var scopedItemsCache: [ClipItem] = []
   @ObservationIgnored private var searchGeneration: Int
   @ObservationIgnored private var searchTask: Task<Void, Never>?
 
@@ -122,21 +125,51 @@ final class ClipViewState {
     expandedSearchMatchedIDs = []
     searchGeneration = 0
     searchTask = nil
+    rebuildScopedItemsCache()
+    rebuildVisibleItems()
+  }
+
+  func noteStoreItemsChanged() {
+    rebuildScopedItemsCache()
+    rebuildVisibleItems()
+  }
+
+  private func noteScopeChanged() {
+    rebuildScopedItemsCache()
     refreshSearchResults()
   }
 
-  var visibleItems: [ClipItem] {
-    let scopedItems = filteredItemsForCurrentScope()
+  private func rebuildScopedItemsCache() {
+    scopedItemsCache = PerfTrace.measureReturning("search.scoped.cache") {
+      filteredItemsForCurrentScope()
+    }
+  }
+
+  private func rebuildVisibleItems() {
     let needle = SearchService.normalizedNeedle(for: searchQuery)
+    let nextItems: [ClipItem]
 
-    guard !needle.isEmpty else {
-      return scopedItems
+    if needle.isEmpty {
+      nextItems = scopedItemsCache
+    } else {
+      nextItems = PerfTrace.measureReturning(
+        "search.visible.filter",
+        detail: ["query": needle, "scopedCount": "\(scopedItemsCache.count)"]
+      ) {
+        scopedItemsCache.filter { item in
+          SearchService.matchesPreview(item: item, needle: needle)
+            || expandedSearchMatchedIDs.contains(item.id)
+        }
+      }
     }
 
-    return scopedItems.filter { item in
-      SearchService.matchesPreview(item: item, needle: needle)
-        || expandedSearchMatchedIDs.contains(item.id)
+    let nextIDs = nextItems.map(\.id)
+    guard nextIDs != visibleItemIDs else {
+      return
     }
+
+    visibleItems = nextItems
+    visibleItemIDs = nextIDs
   }
 
   var groupedVisibleItems: [GroupedItems] {
@@ -151,10 +184,6 @@ final class ClipViewState {
         }
         return GroupedItems(id: title, title: title, items: values)
       }
-  }
-
-  var visibleItemIDs: [String] {
-    visibleItems.map(\.id)
   }
 
   var focusedItem: ClipItem? {
@@ -405,6 +434,12 @@ final class ClipViewState {
   }
 
   func refreshSearchResults() {
+    PerfTrace.measure("search.refresh.total", detail: ["query": searchQuery]) {
+      refreshSearchResultsBody()
+    }
+  }
+
+  private func refreshSearchResultsBody() {
     searchTask?.cancel()
     searchGeneration += 1
 
@@ -412,22 +447,32 @@ final class ClipViewState {
 
     guard !needle.isEmpty else {
       expandedSearchMatchedIDs = []
+      rebuildVisibleItems()
       return
     }
 
-    let scopedItems = filteredItemsForCurrentScope()
+    let scopedItems = scopedItemsCache
     let scopedItemIDs = Set(scopedItems.map(\.id))
     // @rule 搜索 expanded 阶段 stale-while-revalidate：不清空已有 expanded 命中，仅剔除 scope 外项，等新结果落地再替换
     expandedSearchMatchedIDs = expandedSearchMatchedIDs.intersection(scopedItemIDs)
 
-    let quickMatchIDs = Set(
-      scopedItems.lazy
-        .filter { SearchService.matchesPreview(item: $0, needle: needle) }
-        .map(\.id)
-    )
+    let quickMatchIDs = PerfTrace.measureReturning(
+      "search.refresh.previewMatch",
+      detail: ["query": needle, "scopedCount": "\(scopedItems.count)"]
+    ) {
+      Set(
+        scopedItems.lazy
+          .filter { SearchService.matchesPreview(item: $0, needle: needle) }
+          .map(\.id)
+      )
+    }
     let generation = searchGeneration
 
-    normalizeSelection()
+    rebuildVisibleItems()
+
+    PerfTrace.measure("search.refresh.normalizeSelection", detail: ["query": needle]) {
+      normalizeSelectionIfNeeded()
+    }
 
     searchTask = Task.detached(priority: .userInitiated) { [scopedItems, needle, quickMatchIDs] in
       try? await Task.sleep(for: .milliseconds(50))
@@ -448,14 +493,32 @@ final class ClipViewState {
         guard generation == self.searchGeneration else {
           return
         }
-        self.expandedSearchMatchedIDs = expandedIDs
-        if self.selectedIDs.isEmpty, !self.visibleItems.isEmpty {
-          self.selectFirstVisible()
-        } else {
-          self.normalizeSelection()
+        PerfTrace.measure(
+          "search.refresh.expandedApply",
+          detail: [
+            "query": needle,
+            "expandedCount": "\(expandedIDs.count)",
+            "previewCount": "\(quickMatchIDs.count)",
+          ]
+        ) {
+          self.expandedSearchMatchedIDs = expandedIDs
+          self.rebuildVisibleItems()
+          if self.selectedIDs.isEmpty, !self.visibleItems.isEmpty {
+            self.selectFirstVisible()
+          } else {
+            self.normalizeSelectionIfNeeded()
+          }
         }
       }
     }
+  }
+
+  private func normalizeSelectionIfNeeded() {
+    let visibleIDs = Set(visibleItemIDs)
+    if let focusedID, visibleIDs.contains(focusedID), selectedIDs.isSubset(of: visibleIDs) {
+      return
+    }
+    normalizeSelection()
   }
 
   private func filteredItemsForCurrentScope() -> [ClipItem] {

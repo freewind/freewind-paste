@@ -264,6 +264,7 @@ final class ClipWorkflowService {
   }
 
   private func commitItems() {
+    uiState.noteStoreItemsChanged()
     if !SearchService.normalizedNeedle(for: uiState.searchQuery).isEmpty {
       uiState.refreshSearchResults()
     }

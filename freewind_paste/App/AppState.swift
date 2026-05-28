@@ -2,6 +2,9 @@ import AppKit
 import Foundation
 import Observation
 import UniformTypeIdentifiers
+#if DEBUG
+import FreewindSwiftUIDebugBridge
+#endif
 
 @MainActor
 enum AppPaths {
@@ -39,6 +42,13 @@ final class AppState {
 
   @ObservationIgnored private var isBootstrapped = false
   @ObservationIgnored private var pasteTargetApp: NSRunningApplication?
+
+  #if DEBUG
+  @ObservationIgnored let debugBridge = DebugBridge(
+    appName: "freewind_paste",
+    consoleTitle: "freewind_paste Debug"
+  )
+  #endif
 
   init(
     persistence: ClipPersistence? = nil,
@@ -109,6 +119,10 @@ final class AppState {
       return
     }
     isBootstrapped = true
+
+    #if DEBUG
+    AppDebugBridge.setup(appState: self)
+    #endif
 
     menuBarController.install(
       onOpen: { [weak self] in
@@ -431,15 +445,24 @@ final class AppState {
       return true
     }
 
-    guard let responder = popupController.currentWindow?.firstResponder as? NSTextView else {
+    return isSearchFieldFocused()
+  }
+
+  private func isSearchFieldFocused() -> Bool {
+    guard let window = popupController.currentWindow else {
       return false
     }
 
-    if responder.isFieldEditor {
-      return !uiState.searchQuery.isEmpty
+    if window.firstResponder is NSSearchField {
+      return true
     }
 
-    return true
+    guard let responder = window.firstResponder as? NSTextView else {
+      return false
+    }
+
+    // @rule 搜索框聚焦时 Backspace/Delete 只改搜索文字，不删历史项
+    return responder.isFieldEditor
   }
 
   private func isPreviewTextInputFocused() -> Bool {

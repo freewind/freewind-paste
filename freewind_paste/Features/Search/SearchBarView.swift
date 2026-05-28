@@ -8,11 +8,28 @@ struct SearchBarView: View {
   var body: some View {
     @Bindable var uiState = uiState
 
+    #if DEBUG
+    Group {
+      PopupAwareSearchField(
+        text: $uiState.searchQuery,
+        focusNonce: appState.searchFocusNonce
+      )
+      .frame(height: 48)
+      .pasteDebugNode(
+        id: "search_field",
+        role: "text_field",
+        label: "Popup search field",
+        actions: ["set"]
+      )
+    }
+    .environment(appState.debugBridge.registry)
+    #else
     PopupAwareSearchField(
       text: $uiState.searchQuery,
       focusNonce: appState.searchFocusNonce
     )
     .frame(height: 48)
+    #endif
   }
 }
 
@@ -55,6 +72,7 @@ private struct PopupAwareSearchField: NSViewRepresentable {
       guard let field = notification.object as? NSSearchField else {
         return
       }
+      PerfTrace.mark("search.input", detail: ["length": "\(field.stringValue.count)"])
       text = field.stringValue
     }
 

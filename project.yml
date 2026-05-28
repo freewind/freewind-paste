@@ -1,6 +1,10 @@
 name: freewind_paste
 options:
   minimumXcodeGenVersion: 2.38.0
+packages:
+  FreewindSwiftUIDebugBridge:
+    url: https://github.com/freewind/freewind-swiftui-debug-bridge.git
+    revision: 90b79324194d59793c8f49308789d2a799406db5
 schemes:
   freewind_paste:
     build:
@@ -14,6 +18,9 @@ targets:
     deploymentTarget: "14.0"
     sources:
       - path: freewind_paste
+    dependencies:
+      - package: FreewindSwiftUIDebugBridge
+        product: FreewindSwiftUIDebugBridge
     resources:
       - path: freewind_paste/Resources
     settings:

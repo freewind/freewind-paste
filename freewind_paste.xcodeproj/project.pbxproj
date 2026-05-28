@@ -12,10 +12,12 @@
 		0B310EB58E6A5DC75C713C91 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE586ECA68B2F9296ED173E0 /* HistoryView.swift */; };
 		1666300436BA86F778A41954 /* PathNormalize.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF87EA8F1125DDA145BC3BC1 /* PathNormalize.swift */; };
 		27DC9F85F992165FFCE35394 /* SyntaxHighlightingTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED0A01C7C01DF79E369F948 /* SyntaxHighlightingTextView.swift */; };
+		2945BF2619F84135D1EC4B9E /* DebugViewHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 898CD502136A0644090D255E /* DebugViewHelpers.swift */; };
 		358B923315A9A3580AD480C6 /* TextPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F725BFF3785CCA81ED1E9E0 /* TextPreviewView.swift */; };
 		41235DC24186AB49A3676B1C /* ClipViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB41B32679F2E65EFBC61C84 /* ClipViewState.swift */; };
 		514F607CD6E01E9B5822FB20 /* FileHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B127E84F0BDF766C6077F2 /* FileHash.swift */; };
 		546A3AF3027CC59A9B9088CC /* freewind_pasteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E597D0080149027880E53DF4 /* freewind_pasteApp.swift */; };
+		6117E2176AA10E883FCB5D7F /* FreewindSwiftUIDebugBridge in Frameworks */ = {isa = PBXBuildFile; productRef = FE87A209CC76BC17C92FB98E /* FreewindSwiftUIDebugBridge */; };
 		64E41E0CB457456F2DB3B9C1 /* ImageAssetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000208555CD6335477532337 /* ImageAssetStore.swift */; };
 		65A91FCDA3851CC3271D1F99 /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54DC96CFC1AE3018199CC7E6 /* PreviewPaneView.swift */; };
 		6F7661499FEACE19CB8B4CA2 /* AccessibilityPasteTrigger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37938FC15217876FB52E4BD0 /* AccessibilityPasteTrigger.swift */; };
@@ -23,6 +25,7 @@
 		8604DB96184DB283717F7E89 /* HistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE8FE40366F9A9E319BAFDAD /* HistoryListView.swift */; };
 		8907137ADF5C951D67075173 /* ClipboardParseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 126D5EF18222B73F678B5C02 /* ClipboardParseService.swift */; };
 		89C9588DB8EA8AC6E0C374F1 /* ClipKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BFF4E0B20212C2DFBD9C015 /* ClipKind.swift */; };
+		89FB6E3A9E6CF304F7FB1FCC /* AppDebugBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = E15D5A2C710336F70FFA3293 /* AppDebugBridge.swift */; };
 		8BFC2591C13036CD1E0B6884 /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FCE6BCED28DBBD664BA7F4 /* LaunchAtLoginService.swift */; };
 		8C4B97B66F9496FB06453D9B /* ClipboardCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBFCE23922507E74C6866353 /* ClipboardCaptureService.swift */; };
 		8D1BD4DFAF756B134BE9A4FE /* HistoryRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E2787C4A9CEFEA8ED9356E /* HistoryRowView.swift */; };
@@ -32,6 +35,7 @@
 		9F345F5CB014D924431B9FEC /* PasteboardWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443483A534CD5E38CF9B81B1 /* PasteboardWatcher.swift */; };
 		9FC7388DFBFC32652AFD94AE /* FilePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B2F83582A22133762D9D735 /* FilePreviewView.swift */; };
 		A113052BDA43CBD81B0BB629 /* SearchBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63FD372C93458A30AB08305 /* SearchBarView.swift */; };
+		A8E70AB59594DC69AD02EFEC /* PerfTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3DD874DA0A601E1FA06DC5 /* PerfTrace.swift */; };
 		AFAF83E710C3A0566E528D73 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8548E3E0E959CE9C5A696E06 /* AppState.swift */; };
 		B891FBBDA4320F1AA3CD3580 /* GroupedItems.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46C0CEA56EC560B91587693C /* GroupedItems.swift */; };
 		BA62C8799E9BF925A77BA7A2 /* ClipMeta.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB756A134D70D8AE341652C6 /* ClipMeta.swift */; };
@@ -73,6 +77,7 @@
 		45CB2343A43913176478697E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		466926EE55BF9E668078E7C8 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		46C0CEA56EC560B91587693C /* GroupedItems.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupedItems.swift; sourceTree = "<group>"; };
+		4F3DD874DA0A601E1FA06DC5 /* PerfTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerfTrace.swift; sourceTree = "<group>"; };
 		53CDAFE3767ADBC1E04566B3 /* ClipContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipContent.swift; sourceTree = "<group>"; };
 		54ABEF1E12405E4F4420FC29 /* DateGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateGroup.swift; sourceTree = "<group>"; };
 		54DC96CFC1AE3018199CC7E6 /* PreviewPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPaneView.swift; sourceTree = "<group>"; };
@@ -81,6 +86,7 @@
 		71BF76FC785707E756C964FE /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		7A83FAEFF9AF60C93453F49E /* ClipPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPersistence.swift; sourceTree = "<group>"; };
 		8548E3E0E959CE9C5A696E06 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		898CD502136A0644090D255E /* DebugViewHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugViewHelpers.swift; sourceTree = "<group>"; };
 		8E21251EAB06D3DEF56F1C8F /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		93CB60036720D78F71E312F7 /* ClipboardPasteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardPasteService.swift; sourceTree = "<group>"; };
 		9670C4918A64FFD5E69C8406 /* PopupWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupWindowController.swift; sourceTree = "<group>"; };
@@ -92,12 +98,24 @@
 		CE586ECA68B2F9296ED173E0 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		DF284B14148388C590DC6D9B /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
 		E0B127E84F0BDF766C6077F2 /* FileHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileHash.swift; sourceTree = "<group>"; };
+		E15D5A2C710336F70FFA3293 /* AppDebugBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDebugBridge.swift; sourceTree = "<group>"; };
 		E597D0080149027880E53DF4 /* freewind_pasteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = freewind_pasteApp.swift; sourceTree = "<group>"; };
 		EF87EA8F1125DDA145BC3BC1 /* PathNormalize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathNormalize.swift; sourceTree = "<group>"; };
 		F63FD372C93458A30AB08305 /* SearchBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBarView.swift; sourceTree = "<group>"; };
 		F9B891ED6D09ECB293E0B2A0 /* LanguageGuessService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageGuessService.swift; sourceTree = "<group>"; };
 		FBFCE23922507E74C6866353 /* ClipboardCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardCaptureService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6D2C1BA98C85C8B9336067F3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6117E2176AA10E883FCB5D7F /* FreewindSwiftUIDebugBridge in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0338A3467B882C69E041E2CA /* Utils */ = {
@@ -197,6 +215,7 @@
 		7E147651EF588A5B0256B248 /* Infra */ = {
 			isa = PBXGroup;
 			children = (
+				C896D75ABCF4BDFFB4EAAF7D /* Debug */,
 				EFF2B0F19B6F2255D1865E16 /* Gateway */,
 				0DFAC756FB39C04811260436 /* MenuBar */,
 				C3967456C57ACAEB049CD9DD /* System */,
@@ -280,6 +299,16 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		C896D75ABCF4BDFFB4EAAF7D /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				E15D5A2C710336F70FFA3293 /* AppDebugBridge.swift */,
+				898CD502136A0644090D255E /* DebugViewHelpers.swift */,
+				4F3DD874DA0A601E1FA06DC5 /* PerfTrace.swift */,
+			);
+			path = Debug;
+			sourceTree = "<group>";
+		};
 		CA1060B10F4D4CDAA054B0C8 /* Domain */ = {
 			isa = PBXGroup;
 			children = (
@@ -319,6 +348,7 @@
 			buildPhases = (
 				38E67A2AAE4E1BCFD1237002 /* Sources */,
 				107329645D30630EF5F63EBD /* Resources */,
+				6D2C1BA98C85C8B9336067F3 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -326,6 +356,7 @@
 			);
 			name = freewind_paste;
 			packageProductDependencies = (
+				FE87A209CC76BC17C92FB98E /* FreewindSwiftUIDebugBridge */,
 			);
 			productName = freewind_paste;
 			productReference = 15A3F6FE3C48759952B8DA68 /* freewind_paste.app */;
@@ -351,6 +382,9 @@
 			);
 			mainGroup = A68A7B51AF3F8B15298BA0F8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1D17B5D080F8351370BF85BD /* XCRemoteSwiftPackageReference "freewind-swiftui-debug-bridge" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26C05BFEFD6F939DD82B3E65 /* Products */;
 			projectDirPath = "";
@@ -378,6 +412,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6F7661499FEACE19CB8B4CA2 /* AccessibilityPasteTrigger.swift in Sources */,
+				89FB6E3A9E6CF304F7FB1FCC /* AppDebugBridge.swift in Sources */,
 				BEE7C774DC9AED6E6D382BE1 /* AppDelegate.swift in Sources */,
 				C7E7A111A852124BEC4A3D48 /* AppSettings.swift in Sources */,
 				AFAF83E710C3A0566E528D73 /* AppState.swift in Sources */,
@@ -395,6 +430,7 @@
 				9711DD01E5B269950B8A1AFD /* ClipboardPasteService.swift in Sources */,
 				EE613965C246B904281CDE06 /* CopyCommandMonitor.swift in Sources */,
 				F0A33A3E0DB1F45DE051AC49 /* DateGroup.swift in Sources */,
+				2945BF2619F84135D1EC4B9E /* DebugViewHelpers.swift in Sources */,
 				514F607CD6E01E9B5822FB20 /* FileHash.swift in Sources */,
 				9FC7388DFBFC32652AFD94AE /* FilePreviewView.swift in Sources */,
 				B891FBBDA4320F1AA3CD3580 /* GroupedItems.swift in Sources */,
@@ -410,6 +446,7 @@
 				08C7F19B4D96C09193C3250A /* MenuBarController.swift in Sources */,
 				9F345F5CB014D924431B9FEC /* PasteboardWatcher.swift in Sources */,
 				1666300436BA86F778A41954 /* PathNormalize.swift in Sources */,
+				A8E70AB59594DC69AD02EFEC /* PerfTrace.swift in Sources */,
 				D090A197CACAAA48B0971CD1 /* PopupWindowController.swift in Sources */,
 				65A91FCDA3851CC3271D1F99 /* PreviewPaneView.swift in Sources */,
 				A113052BDA43CBD81B0BB629 /* SearchBarView.swift in Sources */,
@@ -606,6 +643,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1D17B5D080F8351370BF85BD /* XCRemoteSwiftPackageReference "freewind-swiftui-debug-bridge" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/freewind/freewind-swiftui-debug-bridge.git";
+			requirement = {
+				kind = revision;
+				revision = 90b79324194d59793c8f49308789d2a799406db5;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FE87A209CC76BC17C92FB98E /* FreewindSwiftUIDebugBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D17B5D080F8351370BF85BD /* XCRemoteSwiftPackageReference "freewind-swiftui-debug-bridge" */;
+			productName = FreewindSwiftUIDebugBridge;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E635833A17B011319E6218AB /* Project object */;
 }
