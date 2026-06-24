@@ -151,6 +151,9 @@ final class AppState {
 
   func showPopup() {
     capturePasteTargetApp()
+    if !uiState.searchQuery.isEmpty {
+      uiState.searchQuery = ""
+    }
     uiState.selectFirstVisible()
     searchFocusNonce += 1
     popupController.show(with: self)

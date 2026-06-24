@@ -49,7 +49,7 @@ final class ClipRepository {
   }
 
   private func sanitizeLoadedItems(_ items: [ClipItem]) -> [ClipItem] {
-    items.map { item in
+    dedupeLoadedItems(items.map { item in
       var next = item
 
       switch next.kind {
@@ -76,6 +76,19 @@ final class ClipRepository {
       }
 
       return next
+    })
+  }
+
+  /// 历史按时间倒序存储；同内容只保留最新一条。
+  private func dedupeLoadedItems(_ items: [ClipItem]) -> [ClipItem] {
+    var seen = Set<String>()
+    return items.filter { item in
+      let key = item.dedupeKey()
+      guard !seen.contains(key) else {
+        return false
+      }
+      seen.insert(key)
+      return true
     }
   }
 }

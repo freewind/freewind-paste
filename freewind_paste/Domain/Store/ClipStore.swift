@@ -19,18 +19,21 @@ final class ClipStore {
   }
 
   func insertOrPromote(_ incoming: ClipItem) {
-    var next = items
-    if let index = next.firstIndex(where: { $0.dedupeKey() == incoming.dedupeKey() }) {
-      let old = next.remove(at: index)
-      var merged = incoming
-      merged.trashedAt = nil
-      merged.favorite = old.favorite
-      merged.label = old.label.isEmpty ? incoming.label : old.label
-      next.insert(merged, at: 0)
-    } else {
-      next.insert(incoming, at: 0)
+    let key = incoming.dedupeKey()
+    let duplicates = items.filter { $0.dedupeKey() == key }
+
+    guard !duplicates.isEmpty else {
+      items.insert(incoming, at: 0)
+      return
     }
-    items = next
+
+    var merged = incoming
+    merged.trashedAt = nil
+    merged.favorite = duplicates.contains(where: \.favorite) || incoming.favorite
+    merged.label = duplicates.first(where: { !$0.label.isEmpty })?.label ?? incoming.label
+
+    items.removeAll { $0.dedupeKey() == key }
+    items.insert(merged, at: 0)
   }
 
   func moveItems(
