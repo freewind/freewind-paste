@@ -72,6 +72,7 @@
 		37938FC15217876FB52E4BD0 /* AccessibilityPasteTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPasteTrigger.swift; sourceTree = "<group>"; };
 		3ED0A01C7C01DF79E369F948 /* SyntaxHighlightingTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntaxHighlightingTextView.swift; sourceTree = "<group>"; };
 		42E2787C4A9CEFEA8ED9356E /* HistoryRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryRowView.swift; sourceTree = "<group>"; };
+		42FDA7810375EAFCC5B34A50 /* freewind-swiftui-debug-bridge */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "freewind-swiftui-debug-bridge"; path = "Vendor/freewind-swiftui-debug-bridge"; sourceTree = SOURCE_ROOT; };
 		443483A534CD5E38CF9B81B1 /* PasteboardWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteboardWatcher.swift; sourceTree = "<group>"; };
 		44418682649DBE39F4D6AF9C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		45CB2343A43913176478697E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -118,6 +119,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		00EF0767871DF1EA18CE679A /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				42FDA7810375EAFCC5B34A50 /* freewind-swiftui-debug-bridge */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
 		0338A3467B882C69E041E2CA /* Utils */ = {
 			isa = PBXGroup;
 			children = (
@@ -258,6 +267,7 @@
 			isa = PBXGroup;
 			children = (
 				8DB41F9837AB474A1B6EE6FE /* freewind_paste */,
+				00EF0767871DF1EA18CE679A /* Packages */,
 				26C05BFEFD6F939DD82B3E65 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -383,7 +393,7 @@
 			mainGroup = A68A7B51AF3F8B15298BA0F8;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				1D17B5D080F8351370BF85BD /* XCRemoteSwiftPackageReference "freewind-swiftui-debug-bridge" */,
+				E3D24A09965A7447575982D7 /* XCLocalSwiftPackageReference "Vendor/freewind-swiftui-debug-bridge" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 26C05BFEFD6F939DD82B3E65 /* Products */;
@@ -644,21 +654,16 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		1D17B5D080F8351370BF85BD /* XCRemoteSwiftPackageReference "freewind-swiftui-debug-bridge" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/freewind/freewind-swiftui-debug-bridge.git";
-			requirement = {
-				kind = revision;
-				revision = 90b79324194d59793c8f49308789d2a799406db5;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		E3D24A09965A7447575982D7 /* XCLocalSwiftPackageReference "Vendor/freewind-swiftui-debug-bridge" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "Vendor/freewind-swiftui-debug-bridge";
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		FE87A209CC76BC17C92FB98E /* FreewindSwiftUIDebugBridge */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 1D17B5D080F8351370BF85BD /* XCRemoteSwiftPackageReference "freewind-swiftui-debug-bridge" */;
 			productName = FreewindSwiftUIDebugBridge;
 		};
 /* End XCSwiftPackageProductDependency section */

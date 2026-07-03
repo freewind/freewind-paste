@@ -9,7 +9,7 @@ enum PerfTrace {
   #if DEBUG
   static weak var bridge: DebugBridge?
   static var lastMetrics: [String: String] = [:]
-  private static let logURL = FileManager.default.homeDirectoryForCurrentUser
+  nonisolated private static let logURL = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent(".freewind_paste/perf.log")
   private static var pendingLines: [String] = []
   private static var flushScheduled = false
@@ -115,7 +115,7 @@ enum PerfTrace {
     }
   }
 
-  private static func appendFileLines(_ lines: [String]) {
+  nonisolated private static func appendFileLines(_ lines: [String]) {
     guard !lines.isEmpty else {
       return
     }
@@ -136,7 +136,7 @@ enum PerfTrace {
     }
   }
 
-  private static func formatDetail(_ detail: [String: String]) -> String {
+  nonisolated private static func formatDetail(_ detail: [String: String]) -> String {
     detail
       .sorted { $0.key < $1.key }
       .map { "\($0.key)=\($0.value)" }

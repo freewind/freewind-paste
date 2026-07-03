@@ -1,10 +1,10 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
   name: "freewind_paste",
   platforms: [
-    .macOS(.v14),
+    .macOS(.v14)
   ],
   products: [
     .executable(
@@ -13,10 +13,7 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(
-      url: "https://github.com/freewind/freewind-swiftui-debug-bridge.git",
-      revision: "90b79324194d59793c8f49308789d2a799406db5"
-    ),
+    .package(path: "Vendor/freewind-swiftui-debug-bridge")
   ],
   targets: [
     .executableTarget(
@@ -29,8 +26,8 @@ let package = Package(
       ],
       path: "freewind_paste",
       resources: [
-        .process("Resources"),
-      ],
-    ),
+        .process("Resources")
+      ]
+    )
   ]
 )
