@@ -24,6 +24,12 @@ struct SettingsView: View {
               appState.openAccessibilitySettings()
             }
           }
+
+          if appState.accessibilityGranted {
+            Text("Grant completed. Restart once to apply auto-paste.")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
         }
 
         Divider()

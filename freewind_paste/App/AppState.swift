@@ -42,6 +42,8 @@ final class AppState {
 
   @ObservationIgnored private var isBootstrapped = false
   @ObservationIgnored private var pasteTargetApp: NSRunningApplication?
+  @ObservationIgnored private var awaitingAccessibilityGrant = false
+  @ObservationIgnored private var hasPromptedAccessibilityRestart = false
 
   #if DEBUG
   @ObservationIgnored let debugBridge = DebugBridge(
@@ -332,6 +334,7 @@ final class AppState {
   }
 
   func requestAccessibilityPermission() {
+    awaitingAccessibilityGrant = !accessibilityGranted
     _ = accessibilityAccess.requestPermissionIfNeeded()
     refreshAccessibilityStatus()
   }
@@ -341,7 +344,23 @@ final class AppState {
   }
 
   func refreshAccessibilityStatus() {
-    accessibilityGranted = accessibilityAccess.isPermissionGranted()
+    let wasGranted = accessibilityGranted
+    let isGranted = accessibilityAccess.isPermissionGranted()
+    accessibilityGranted = isGranted
+
+    guard isGranted else {
+      hasPromptedAccessibilityRestart = false
+      return
+    }
+
+    guard !wasGranted, awaitingAccessibilityGrant, !hasPromptedAccessibilityRestart else {
+      return
+    }
+
+    awaitingAccessibilityGrant = false
+    hasPromptedAccessibilityRestart = true
+    statusMessage = "Accessibility granted. Restart to apply"
+    promptForAccessibilityRestart()
   }
 
   func setPreviewTextInputActive(_ active: Bool) {
@@ -663,5 +682,42 @@ final class AppState {
 
   private func syncLaunchAtLogin() {
     try? launchAtLoginService.setEnabled(settings.launchAtLogin)
+  }
+
+  private func promptForAccessibilityRestart() {
+    let alert = NSAlert()
+    alert.messageText = "Accessibility Granted"
+    alert.informativeText = "Restart is required before auto-paste can take effect."
+    alert.addButton(withTitle: "OK")
+    alert.addButton(withTitle: "Later")
+
+    let checkbox = NSButton(checkboxWithTitle: "Restart now", target: nil, action: nil)
+    checkbox.state = .on
+    alert.accessoryView = checkbox
+
+    guard alert.runModal() == .alertFirstButtonReturn else {
+      statusMessage = "Restart later to apply accessibility"
+      return
+    }
+
+    guard checkbox.state == .on else {
+      statusMessage = "Restart later to apply accessibility"
+      return
+    }
+
+    relaunchApplication()
+  }
+
+  private func relaunchApplication() {
+    let task = Process()
+    task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+    task.arguments = ["-n", Bundle.main.bundlePath]
+
+    do {
+      try task.run()
+      NSApplication.shared.terminate(nil)
+    } catch {
+      statusMessage = "Restart failed: \(error.localizedDescription)"
+    }
   }
 }
